@@ -6,6 +6,7 @@ import (
 	kyber_encoding "go.dedis.ch/kyber/v3/util/encoding"
 	onet_network "go.dedis.ch/onet/v3/network"
 
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 
 	"github.com/pelletier/go-toml"
@@ -17,7 +18,7 @@ type configNetwork struct {
 }
 type configSurvey struct {
 	Name      *string
-	Operation *string
+	Operation *conv.OperationMarshallable
 	Sources   *[]libdrynx.ColumnID
 }
 type config struct {

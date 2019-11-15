@@ -172,7 +172,6 @@ func (p *DataCollectionProtocol) Dispatch() error {
 
 // GenerateData is used to generate data at DPs, this is more for simulation's purposes
 func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
-
 	// Prepare the generation of all possible groups with the query information.
 	numType := make([]int64, len(p.Survey.Query.DPDataGen.GroupByValues))
 	for i, v := range p.Survey.Query.DPDataGen.GroupByValues {
@@ -273,6 +272,24 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 				ints[i] = arr
 			}
 			encryptedResponse, clearResponse, cprf = libdrynxencoding.Encode(ints, p.Survey.Aggregate, signatures, p.Survey.Query.Ranges, p.Survey.Query.Operation)
+		}
+
+		op2 := p.Survey.Query.Operation2
+		if op2 != nil {
+			converted := make([][]float64, len(providedData))
+			for i, l := range providedData {
+				converted[i] = make([]float64, len(l))
+				for j, v := range l {
+					converted[i][j] = float64(v)
+				}
+
+			}
+
+			encryptedResponse, err = op2.ApplyOnProvider(p.Survey.Aggregate, converted)
+			if err != nil {
+				// FIXME answer something
+				log.Error("when applying operation", err)
+			}
 		}
 
 		log.Lvl2("Data Provider", p.Name(), "computes the query response", clearResponse, "for groups:", groupsString, "with operation:", p.Survey.Query.Operation)

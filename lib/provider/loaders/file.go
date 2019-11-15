@@ -25,7 +25,7 @@ func NewFileLoader(path string) (provider.Loader, error) {
 }
 
 func (f fileLoader) Provide(query libdrynx.Query) ([][]float64, error) {
-	if query.Operation.NbrInput != len(query.Selector) {
+	if query.Operation2.GetInputSize() != uint(len(query.Selector)) {
 		return nil, errors.New("malformed query")
 	}
 
@@ -41,7 +41,7 @@ func (f fileLoader) Provide(query libdrynx.Query) ([][]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	if reader.FieldsPerRecord < query.Operation.NbrInput {
+	if uint(reader.FieldsPerRecord) < query.Operation2.GetInputSize() {
 		return nil, errors.New("not enough column in CSV")
 	}
 
@@ -63,7 +63,7 @@ func (f fileLoader) Provide(query libdrynx.Query) ([][]float64, error) {
 		return nil, err
 	}
 
-	ret := make([][]float64, query.Operation.NbrInput)
+	ret := make([][]float64, query.Operation2.GetInputSize())
 	for i, index := range selectorIndexes {
 		arr := make([]float64, len(records))
 		for j, r := range records {

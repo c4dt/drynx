@@ -162,10 +162,22 @@ type QueryIVSigs struct {
 // ColumnID is a reference to a "column" the Loader can extract
 type ColumnID string
 
+// TODO from operations/index.go, put it back when migration done
+type Operation2 interface {
+	// ApplyOnProvider encodes loaded data using given public key.
+	ApplyOnProvider(kyber.Point, [][]float64) (libunlynx.CipherVector, error)
+
+	// ApplyOnClient decodes the aggregated values.
+	ApplyOnClient(kyber.Scalar, libunlynx.CipherVector) ([]float64, error)
+
+	GetInputSize() uint
+}
+
 // Query is used to transport query information through servers, to DPs
 type Query struct {
 	// query statement
 	Operation   Operation
+	Operation2  Operation2
 	Ranges      []*[]int64
 	Proofs      int
 	Obfuscation bool

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/protocols"
 	"go.dedis.ch/onet/v3"
@@ -12,9 +13,13 @@ import (
 //______________________________________________________________________________________________________________________
 
 // HandleSurveyQueryToDP handles the reception of a query at a DP
-func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (network.Message, error) {
+func (s *ServiceDrynx) HandleSurveyQueryToDP(marshallable *conv.SurveyQueryToDPMarshallable) (network.Message, error) {
+	recqValue, err := conv.SurveyQueryToDPFromMarshallable(*marshallable)
+	if err != nil {
+		return nil, err
+	}
+	recq := &recqValue
 
-	recq.SQ.Query.IVSigs.InputValidationSigs = recreateRangeSignatures(recq.SQ.Query.IVSigs)
 	// only generate ProofCollection protocol instances if proofs is enabled
 	var mapPIs map[string]onet.ProtocolInstance
 	if recq.SQ.Query.Proofs != 0 {
@@ -25,7 +30,7 @@ func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (ne
 		}
 	}
 
-	_, err := s.Survey.Put(recq.SQ.SurveyID, Survey{
+	_, err = s.Survey.Put(recq.SQ.SurveyID, Survey{
 		SurveyQuery: recq.SQ,
 		MapPIs:      mapPIs,
 	})

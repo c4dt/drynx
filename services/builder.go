@@ -9,6 +9,7 @@ import (
 	"go.dedis.ch/onet/v3/log"
 	onet_network "go.dedis.ch/onet/v3/network"
 
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/provider"
 	"github.com/ldsec/drynx/protocols"
@@ -31,13 +32,13 @@ func NewBuilder() Builder {
 // WithComputingNode add support for running as a Computing Node.
 func (b Builder) WithComputingNode() Builder {
 	// TODO split
-	msgTypes.msgSurveyQuery = onet_network.RegisterMessage(&libdrynx.SurveyQuery{})
-	msgTypes.msgSurveyQueryToDP = onet_network.RegisterMessage(&libdrynx.SurveyQueryToDP{})
+	msgTypes.msgSurveyQuery = onet_network.RegisterMessage(&conv.SurveyQueryMarshallable{})
+	msgTypes.msgSurveyQueryToDP = onet_network.RegisterMessage(&conv.SurveyQueryToDPMarshallable{})
 	msgTypes.msgDPqueryReceived = onet_network.RegisterMessage(&DPqueryReceived{})
 	msgTypes.msgSyncDCP = onet_network.RegisterMessage(&SyncDCP{})
 	msgTypes.msgDPdataFinished = onet_network.RegisterMessage(&DPdataFinished{})
 
-	onet_network.RegisterMessage(&libdrynx.SurveyQueryToVN{})
+	onet_network.RegisterMessage(&conv.SurveyQueryToVNMarshallable{})
 	onet_network.RegisterMessage(&libdrynx.ResponseDP{})
 
 	onet_network.RegisterMessage(&libdrynx.EndVerificationRequest{})

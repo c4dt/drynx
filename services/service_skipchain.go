@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreos/bbolt"
 	"github.com/fanliao/go-concurrentMap"
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/protocols"
 	"github.com/ldsec/unlynx/lib"
@@ -28,15 +29,18 @@ var VerificationBitmap = []skipchain.VerifierID{VerifyBitmap, skipchain.VerifyBa
 //______________________________________________________________________________________________________________________
 
 // HandleSurveyQueryToVN handles the reception of the query at a VN
-func (s *ServiceDrynx) HandleSurveyQueryToVN(recq *libdrynx.SurveyQueryToVN) (network.Message, error) {
-
-	recq.SQ.Query.IVSigs.InputValidationSigs = recreateRangeSignatures(recq.SQ.Query.IVSigs)
+func (s *ServiceDrynx) HandleSurveyQueryToVN(marshallable *conv.SurveyQueryToVNMarshallable) (network.Message, error) {
+	recqValue, err := conv.SurveyQueryToVNFromMarshallable(*marshallable)
+	if err != nil {
+		return nil, err
+	}
+	recq := &recqValue
 
 	s.Mutex.Lock()
 	var totalNbrProofs int
 	log.Lvl2("[SERVICE] <VN> Server", s.ServerIdentity().String(), "received a Survey Query")
 
-	_, err := s.Survey.Put(recq.SQ.SurveyID, Survey{
+	_, err = s.Survey.Put(recq.SQ.SurveyID, Survey{
 		SurveyQuery: recq.SQ,
 		Mutex:       &sync.Mutex{},
 	})

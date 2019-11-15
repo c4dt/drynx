@@ -1,8 +1,8 @@
 package services
 
 import (
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
-	"github.com/ldsec/drynx/lib/encoding"
 	"github.com/ldsec/drynx/lib/obfuscation"
 	"github.com/ldsec/drynx/lib/range"
 	"github.com/ldsec/unlynx/lib"
@@ -60,10 +60,31 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 		size2 = len(*ps[0])
 	}
 
-	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: size1, InputValidationSize2: size2}
+	op, err := conv.OperationFromMarshallable(conv.OperationMarshallable(operation.NameOp))
+	if err != nil {
+		panic(err)
+	}
 
-	//create the query
-	sq := libdrynx.SurveyQuery{
+	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: size1, InputValidationSize2: size2}
+	query := libdrynx.Query{
+		Operation2: op,
+		Selector:   make([]libdrynx.ColumnID, op.GetInputSize()),
+
+		Operation:   operation,
+		Ranges:      ranges,
+		DiffP:       diffP,
+		Proofs:      proofs,
+		Obfuscation: obfuscation,
+		// data generation at DPs
+		DPDataGen: dpDataGen,
+
+		// identity blockchain infos
+		IVSigs:        iVSigs,
+		RosterVNs:     rosterVNs,
+		CuttingFactor: cuttingFactor,
+	}
+
+	return libdrynx.SurveyQuery{
 		SurveyID:                   surveyID,
 		RosterServers:              *rosterServers,
 		IntraMessage:               false,
@@ -74,24 +95,8 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 		RangeProofThreshold:        thresholds[2],
 		ObfuscationProofThreshold:  thresholds[3],
 		KeySwitchingProofThreshold: thresholds[4],
-
-		// query statement
-		Query: libdrynx.Query{
-			Operation:   operation,
-			Ranges:      ranges,
-			DiffP:       diffP,
-			Proofs:      proofs,
-			Obfuscation: obfuscation,
-			// data generation at DPs
-			DPDataGen: dpDataGen,
-
-			// identity blockchain infos
-			IVSigs:        iVSigs,
-			RosterVNs:     rosterVNs,
-			CuttingFactor: cuttingFactor,
-		},
+		Query:                      query,
 	}
-	return sq
 }
 
 // SendSurveyQuery creates a survey based on a set of entities (servers) and a survey description.
@@ -104,7 +109,11 @@ func (c *API) SendSurveyQuery(sq libdrynx.SurveyQuery) (*[]string, *[][]float64,
 
 	//send the query and get the answer
 	sr := libdrynx.ResponseDP{}
-	err := c.SendProtobuf(c.entryPoint, &sq, &sr)
+	marshallable, err := conv.ToSurveyQueryMarshallable(sq)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = c.SendProtobuf(c.entryPoint, &marshallable, &sr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -120,7 +129,10 @@ func (c *API) SendSurveyQuery(sq libdrynx.SurveyQuery) (*[]string, *[][]float64,
 	count := 0
 	for i, res := range sr.Data {
 		grp[count] = i
-		aggr[count] = libdrynxencoding.Decode(res, c.private, sq.Query.Operation)
+		aggr[count], err = sq.Query.Operation2.ApplyOnClient(c.private, res)
+		if err != nil {
+			return nil, nil, err
+		}
 		count++
 	}
 	libunlynx.EndTimer(clientDecode)

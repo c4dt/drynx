@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 	"go.dedis.ch/cothority/v3/skipchain"
 	"go.dedis.ch/onet/v3"
@@ -16,8 +17,12 @@ import (
 // SendSurveyQueryToVNs creates a survey based on a set of entities (servers) and a survey description.
 func (c *API) SendSurveyQueryToVNs(entities *onet.Roster, query *libdrynx.SurveyQuery) error {
 	for _, si := range entities.List {
-		err := c.SendProtobuf(si, &libdrynx.SurveyQueryToVN{SQ: *query}, nil)
+		marshallable, err := conv.ToSurveyQueryToVNMarshallable(
+			libdrynx.SurveyQueryToVN{SQ: *query})
 		if err != nil {
+			return err
+		}
+		if err := c.SendProtobuf(si, &marshallable, nil); err != nil {
 			return err
 		}
 	}

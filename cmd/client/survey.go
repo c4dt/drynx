@@ -7,6 +7,7 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/ldsec/drynx/conv"
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/services"
 	kyber "go.dedis.ch/kyber/v3"
@@ -66,7 +67,7 @@ func surveySetOperation(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("need an operation")
 	}
-	operation := args.Get(0)
+	operation := conv.OperationMarshallable(args.Get(0))
 
 	conf, err := readConfigFrom(os.Stdin)
 	if err != nil {
@@ -114,13 +115,39 @@ func surveyRun(c *cli.Context) error {
 		return errors.New("need a survey operation")
 	}
 	operation := libdrynx.ChooseOperation(
-		*conf.Survey.Operation, // operation
-		len(roster.List),       // min num of DP to query
-		len(roster.List),       // max num of DP to query
-		5,                      // dimension for linear regression
-		0)                      // "cutting factor", how much to remove of gen data[0:#/n]
+		string(conf.Survey.Operation.Name), // operation
+		0,                                  // lower bound of range
+		len(roster.List),                   // upper bound of range
+		5,                                  // dimension for linear regression
+		0)                                  // "cutting factor", how much to remove of gen data[0:#/n]
 	if operation.NbrInput != len(*conf.Survey.Sources) {
 		return errors.New("Operation can't take #Sources")
+	}
+
+	op, err := conv.OperationFromMarshallable(*conf.Survey.Operation)
+	if err != nil {
+		return err
+	}
+
+	query := libdrynx.Query{
+		Operation2: op,
+
+		Operation:   operation,
+		Ranges:      []*[]int64{}, // range for each output of operation
+		Proofs:      int(0),       // 0 == no proof, 1 == proof, 2 == optimized proof
+		Obfuscation: false,
+		DiffP: libdrynx.QueryDiffP{ // differential privacy
+			LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
+		DPDataGen: libdrynx.QueryDPDataGen{ // how to group by
+			GroupByValues: []int64{3, 2, 1}, GenerateRows: 10, GenerateDataMin: int64(0), GenerateDataMax: int64(256)},
+		IVSigs: libdrynx.QueryIVSigs{
+			InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
+			InputValidationSize1: 0,
+			InputValidationSize2: 0,
+		},
+		RosterVNs:     &roster,
+		CuttingFactor: 0,
+		Selector:      *conf.Survey.Sources,
 	}
 
 	_, aggregations, err := client.SendSurveyQuery(libdrynx.SurveyQuery{
@@ -133,30 +160,13 @@ func surveyRun(c *cli.Context) error {
 			roster.List[1].String(): roster.List[1].Public,
 			roster.List[2].String(): roster.List[2].Public},
 
+		Query: query,
+
 		Threshold:                  0,
 		AggregationProofThreshold:  0,
 		ObfuscationProofThreshold:  0,
 		RangeProofThreshold:        0,
 		KeySwitchingProofThreshold: 0,
-
-		Query: libdrynx.Query{
-			Operation:   operation,
-			Ranges:      []*[]int64{}, // range for each output of operation
-			Proofs:      int(0),       // 0 == no proof, 1 == proof, 2 == optimized proof
-			Obfuscation: false,
-			DiffP: libdrynx.QueryDiffP{ // differential privacy
-				LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
-			DPDataGen: libdrynx.QueryDPDataGen{ // how to group by
-				GroupByValues: []int64{1, 1, 1}, GenerateRows: 10, GenerateDataMin: int64(0), GenerateDataMax: int64(256)},
-			IVSigs: libdrynx.QueryIVSigs{
-				InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
-				InputValidationSize1: 0,
-				InputValidationSize2: 0,
-			},
-			RosterVNs:     &roster,
-			CuttingFactor: 0,
-			Selector:      *conf.Survey.Sources,
-		},
 	})
 	if err != nil {
 		return err
