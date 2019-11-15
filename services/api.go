@@ -60,7 +60,17 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 		size2 = len(*ps[0])
 	}
 
-	op, err := conv.OperationFromMarshallable(conv.OperationMarshallable(operation.NameOp))
+	var parsedRange *conv.RangeMarshallable
+	if operation.NameOp == "frequencyCount" {
+		parsedRange = &conv.RangeMarshallable{
+			Min: operation.QueryMin,
+			Max: operation.QueryMax,
+		}
+	}
+	op, err := conv.OperationFromMarshallable(conv.OperationMarshallable{
+		Name:  operation.NameOp,
+		Range: parsedRange,
+	})
 	if err != nil {
 		panic(err)
 	}

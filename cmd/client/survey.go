@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/urfave/cli"
 
@@ -67,7 +69,30 @@ func surveySetOperation(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("need an operation")
 	}
-	operation := conv.OperationMarshallable(args.Get(0))
+	var parsedRange *conv.RangeMarshallable
+	if rawRange := c.String("range"); rawRange != "" {
+		splitted := strings.SplitN(rawRange, ",", 2)
+		if len(splitted) != 2 {
+			return errors.New("range should be ','-separated")
+		}
+
+		min, err := strconv.ParseInt(splitted[0], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		max, err := strconv.ParseInt(splitted[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		parsedRange = &conv.RangeMarshallable{Min: min, Max: max}
+	}
+
+	operation := conv.OperationMarshallable{
+		Name:  args.Get(0),
+		Range: parsedRange,
+	}
 
 	conf, err := readConfigFrom(os.Stdin)
 	if err != nil {
@@ -114,10 +139,14 @@ func surveyRun(c *cli.Context) error {
 	if conf.Survey.Operation == nil {
 		return errors.New("need a survey operation")
 	}
+	opMin, opMax := 0, 0
+	if opRange := conf.Survey.Operation.Range; opRange != nil {
+		opMin, opMax = int(opRange.Min), int(opRange.Max)
+	}
 	operation := libdrynx.ChooseOperation(
 		string(conf.Survey.Operation.Name), // operation
-		0,                                  // lower bound of range
-		len(roster.List),                   // upper bound of range
+		opMin,                              // lower bound of range
+		opMax,                              // upper bound of range
 		5,                                  // dimension for linear regression
 		0)                                  // "cutting factor", how much to remove of gen data[0:#/n]
 	if operation.NbrInput != len(*conf.Survey.Sources) {

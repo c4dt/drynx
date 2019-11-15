@@ -64,6 +64,7 @@ func main() {
 		}, {
 			Name:      "set-operation",
 			ArgsUsage: "operation",
+			Flags:     []cli.Flag{cli.StringFlag{Name: "range"}},
 			// TODO use op generated list
 			Usage:  "on a survey config stream, set the operation to use, try sum/mean/count/…",
 			Action: surveySetOperation,

@@ -12,8 +12,14 @@ import (
 const fcInputSize = 1
 
 // FrequencyCount computes the sum of occurence of values in a column.
-type FrequencyCount struct {
-	min, max int64
+type FrequencyCount struct{ min, max int64 }
+
+// NewFrequencyCount creates a new FrequencyCount bound to the given range.
+func NewFrequencyCount(min, max int64) (FrequencyCount, error) {
+	if min > max {
+		return FrequencyCount{}, errors.New("given minimum is greater than maximum")
+	}
+	return FrequencyCount{min, max}, nil
 }
 
 // ApplyOnProvider encodes.

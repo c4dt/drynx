@@ -1,6 +1,7 @@
 package conv
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ldsec/drynx/lib"
@@ -16,30 +17,42 @@ type OperationMarshallable struct {
 	Range *RangeMarshallable
 }
 
-// OperationFromMarshallable safely converts to Operation2.
 func OperationFromMarshallable(marshallable OperationMarshallable) (libdrynx.Operation2, error) {
-	switch marshallable {
-	case "sum":
-		return operations.Sum{}, nil
-	case "cosim":
-		return operations.CosineSimilarity{}, nil
-	case "frequencyCount":
-		return operations.FrequencyCount{}, nil
-	default:
-		return nil, fmt.Errorf("unable to unmarshal operation: %v", marshallable)
+	if marshallable.Range == nil {
+		switch marshallable.Name {
+		case "sum":
+			return operations.Sum{}, nil
+		case "cosim":
+			return operations.CosineSimilarity{}, nil
+		}
+	} else {
+		r := *marshallable.Range
+		if r.Min > r.Max {
+			return nil, errors.New("min greater than max")
+		}
+		switch marshallable.Name {
+		case "frequencyCount":
+			return operations.NewFrequencyCount(r.Min, r.Max)
+		}
 	}
+
+	return nil, fmt.Errorf("unable to unmarshal operation: %v", marshallable)
 }
 
 // ToOperationMarshallable converts from Operation2.
-func ToOperationMarshallable(op libdrynx.Operation2) (OperationMarshallable, error) {
-	switch op.(type) {
+func ToOperationMarshallable(operation libdrynx.Operation2) (OperationMarshallable, error) {
+	switch op := operation.(type) {
 	case operations.Sum:
-		return "sum", nil
+		return OperationMarshallable{Name: "sum"}, nil
 	case operations.CosineSimilarity:
-		return "cosim", nil
+		return OperationMarshallable{Name: "cosim"}, nil
 	case operations.FrequencyCount:
-		return "frequencyCount", nil
+		min, max := op.GetMinMax()
+		return OperationMarshallable{
+			Name:  "frequencyCount",
+			Range: &RangeMarshallable{min, max},
+		}, nil
 	}
 
-	return "", fmt.Errorf("unable to marshal operation: %v", op)
+	return OperationMarshallable{}, fmt.Errorf("unable to marshal operation: %v", operation)
 }
