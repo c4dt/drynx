@@ -10,6 +10,7 @@ import (
 )
 
 const sumInputSize = 1
+const sumEncodedSize = 1
 
 // Sum computes the accumulation of values in a column.
 type Sum struct{}
@@ -39,4 +40,9 @@ func (s Sum) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.CipherVector) 
 // GetInputSize returns 1.
 func (Sum) GetInputSize() uint {
 	return sumInputSize
+}
+
+// GetEncodedSize returns 1.
+func (Sum) GetEncodedSize() uint {
+	return sumEncodedSize
 }

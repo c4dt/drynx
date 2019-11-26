@@ -35,7 +35,11 @@ func (fc FrequencyCount) ApplyOnProvider(key kyber.Point, loaded [][]float64) (l
 }
 
 // ApplyOnClient decodes.
-func (FrequencyCount) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.CipherVector) ([]float64, error) {
+func (fc FrequencyCount) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.CipherVector) ([]float64, error) {
+	if uint(len(aggregated)) != fc.GetEncodedSize() {
+		return nil, errors.New("unexpected size of aggregated vector")
+	}
+
 	return intsToFloats(libdrynxencoding.DecodeFreqCount(aggregated, key)), nil
 }
 
@@ -47,4 +51,9 @@ func (fc FrequencyCount) GetMinMax() (int64, int64) {
 // GetInputSize returns 1.
 func (FrequencyCount) GetInputSize() uint {
 	return fcInputSize
+}
+
+// GetEncodedSize returns the size of the CipherVector.
+func (fc FrequencyCount) GetEncodedSize() uint {
+	return uint(fc.max-fc.min) + 1
 }

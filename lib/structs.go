@@ -163,7 +163,11 @@ type Operation2 interface {
 	// ApplyOnClient decodes the aggregated values.
 	ApplyOnClient(kyber.Scalar, libunlynx.CipherVector) ([]float64, error)
 
+	// GetInputSize returns the needed input width.
 	GetInputSize() uint
+
+	// GetEncodedSize returns the CipherVector width.
+	GetEncodedSize() uint
 }
 
 // Query is used to transport query information through servers, to DPs

@@ -10,6 +10,7 @@ import (
 )
 
 const cosimInputSize = 2
+const cosimEncodedSize = 5
 
 // CosineSimilarity computes the cosine similarity between two columns.
 type CosineSimilarity struct{}
@@ -28,7 +29,7 @@ func (CosineSimilarity) ApplyOnProvider(key kyber.Point, loaded [][]float64) (li
 
 // ApplyOnClient decodes.
 func (CosineSimilarity) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.CipherVector) ([]float64, error) {
-	if len(aggregated) != 5 {
+	if len(aggregated) != cosimEncodedSize {
 		return nil, errors.New("unexpected size of aggregated vector")
 	}
 
@@ -38,4 +39,9 @@ func (CosineSimilarity) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.Cip
 // GetInputSize returns 2.
 func (CosineSimilarity) GetInputSize() uint {
 	return cosimInputSize
+}
+
+// GetEncodedSize returns 5.
+func (CosineSimilarity) GetEncodedSize() uint {
+	return cosimEncodedSize
 }
