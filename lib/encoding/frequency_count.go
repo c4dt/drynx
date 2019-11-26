@@ -14,26 +14,47 @@ func EncodeFreqCount(input []int64, min int64, max int64, pubKey kyber.Point) ([
 	return resultEnc, resultClear
 }
 
+// ExecuteFreqCountOnProvider computes the result to encode.
+func ExecuteFreqCountOnProvider(input []int64, min int64, max int64) []uint64 {
+	freqcount := make([]uint64, max-min+1)
+	for _, el := range input {
+		if el < min || el > max {
+			panic("found out of range data")
+		}
+		freqcount[el-min]++
+	}
+
+	return freqcount
+}
+
+// ExecuteFreqCountOnClient computes the result from the aggregated results.
+func ExecuteFreqCountOnClient(input []int64) []uint64 {
+	ret := make([]uint64, len(input))
+	for i, v := range input {
+		if v < 0 {
+			panic("frequency count < 0")
+		}
+		ret[i] = uint64(v)
+	}
+	return ret
+}
+
 // EncodeFreqCountWithProofs computes the frequency count of query results with the proof of range
 func EncodeFreqCountWithProofs(input []int64, min int64, max int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
-	freqcount := make([]int64, max-min+1)
-	r := make([]kyber.Scalar, max-min+1)
-
-	for i := 0; int64(i) <= max-min; i++ {
-		freqcount[i] = 0
-	}
-	//get the frequency count for all integer values in the range {min, min+1, ..., max}
-	for _, el := range input {
-		freqcount[el-min]++
+	freqcountUint := ExecuteFreqCountOnProvider(input, min, max)
+	freqcount := make([]int64, len(freqcountUint))
+	for i, v := range freqcountUint {
+		freqcount[i] = int64(v)
 	}
 
 	//encrypt the local DP's query results
 	ciphertextTuples := make([]libunlynx.CipherText, max-min+1)
 	wg := libunlynx.StartParallelize(int(max-min) + 1)
+	r := make([]kyber.Scalar, len(freqcount))
 	for i := int64(0); i <= max-min; i++ {
 		go func(i int64) {
 			defer wg.Done()
-			countIEncrypted, ri := libunlynx.EncryptIntGetR(pubKey, freqcount[i])
+			countIEncrypted, ri := libunlynx.EncryptIntGetR(pubKey, int64(freqcount[i]))
 			r[i] = ri
 			ciphertextTuples[i] = *countIEncrypted
 		}(i)

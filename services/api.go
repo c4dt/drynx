@@ -137,7 +137,12 @@ func (c *API) SendSurveyQuery(sq libdrynx.SurveyQuery) (*[]string, *[][]float64,
 	count := 0
 	for i, res := range sr.Data {
 		grp[count] = i
-		aggr[count], err = sq.Query.Operation2.ApplyOnClient(c.private, res)
+
+		aggregated := make([]float64, len(res))
+		for i, r := range res {
+			aggregated[i] = float64(libunlynx.DecryptIntWithNeg(c.private, r))
+		}
+		aggr[count], err = sq.Query.Operation2.ExecuteOnClient(aggregated)
 		if err != nil {
 			return nil, nil, err
 		}

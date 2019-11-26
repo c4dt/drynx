@@ -4,9 +4,6 @@ import (
 	"errors"
 
 	"github.com/ldsec/drynx/lib/encoding"
-	"github.com/ldsec/unlynx/lib"
-
-	"go.dedis.ch/kyber/v3"
 )
 
 const fcInputSize = 1
@@ -22,25 +19,37 @@ func NewFrequencyCount(min, max int64) (FrequencyCount, error) {
 	return FrequencyCount{min, max}, nil
 }
 
-// ApplyOnProvider encodes.
-func (fc FrequencyCount) ApplyOnProvider(key kyber.Point, loaded [][]float64) (libunlynx.CipherVector, error) {
+// ExecuteOnProvider encodes.
+func (fc FrequencyCount) ExecuteOnProvider(loaded [][]float64) ([]float64, error) {
 	if len(loaded) != fcInputSize {
 		return nil, errors.New("unexpected number of columns")
 	}
 
 	converted := floatsToInts(loaded[0])
-
-	encoded, _ := libdrynxencoding.EncodeFreqCount(converted, fc.min, fc.max, key)
-	return encoded, nil
+	freqCount := libdrynxencoding.ExecuteFreqCountOnProvider(converted, fc.min, fc.max)
+	ret := make([]float64, len(freqCount))
+	for i, v := range freqCount {
+		ret[i] = float64(v)
+	}
+	return ret, nil
 }
 
-// ApplyOnClient decodes.
-func (fc FrequencyCount) ApplyOnClient(key kyber.Scalar, aggregated libunlynx.CipherVector) ([]float64, error) {
+// ExecuteOnClient decodes.
+func (fc FrequencyCount) ExecuteOnClient(aggregated []float64) ([]float64, error) {
 	if uint(len(aggregated)) != fc.GetEncodedSize() {
+		println("FC", aggregated)
+		for _, v := range aggregated {
+			println("FC aggregated:", v)
+		}
 		return nil, errors.New("unexpected size of aggregated vector")
 	}
 
-	return intsToFloats(libdrynxencoding.DecodeFreqCount(aggregated, key)), nil
+	freqCount := libdrynxencoding.ExecuteFreqCountOnClient(floatsToInts(aggregated))
+	ret := make([]float64, len(freqCount))
+	for i, v := range freqCount {
+		ret[i] = float64(v)
+	}
+	return ret, nil
 }
 
 // GetMinMax returns the given min and max.

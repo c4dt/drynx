@@ -210,7 +210,8 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 
 		return libdrynx.ResponseDPBytes{Data: grouped, Len: 1}
 	}
-	if uint(len(providedData)) != p.Survey.Query.Operation2.GetInputSize() {
+	if p.Survey.Query.Operation2 != nil &&
+		uint(len(providedData)) != p.Survey.Query.Operation2.GetInputSize() {
 		log.Errorf("loader didn't gave expected width")
 	}
 
@@ -252,10 +253,11 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	// compute response
 	queryResponse := make(map[string]libunlynx.CipherVector, 0)
 	clearResponse := make([]int64, 0)
-	encryptedResponse := make([]libunlynx.CipherText, 0)
 
 	// for all different groups
 	for _, v := range groupsString {
+		encryptedResponse := make([]libunlynx.CipherText, 0)
+
 		if p.Survey.Query.CuttingFactor != 0 {
 			p.Survey.Query.Operation.NbrOutput = int(p.Survey.Query.Operation.NbrOutput / p.Survey.Query.CuttingFactor)
 		}
@@ -285,10 +287,15 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 
 			}
 
-			encryptedResponse, err = op2.ApplyOnProvider(p.Survey.Aggregate, converted)
+			localResult, err := op2.ExecuteOnProvider(converted)
 			if err != nil {
 				// FIXME answer something
 				log.Error("when applying operation", err)
+			}
+
+			for i, v := range localResult {
+				e := libunlynx.EncryptInt(p.Survey.Aggregate, int64(v))
+				encryptedResponse[i] = *e
 			}
 		}
 
