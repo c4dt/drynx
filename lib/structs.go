@@ -157,15 +157,13 @@ type ColumnID string
 // Operation2 is an statistical operator to be run on the network.
 // TODO from operations/index.go, put it back when migration done
 type Operation2 interface {
-	// ApplyOnProvider encodes loaded data using given public key.
-	ApplyOnProvider(kyber.Point, [][]float64) (libunlynx.CipherVector, error)
-
-	// ApplyOnClient decodes the aggregated values.
-	ApplyOnClient(kyber.Scalar, libunlynx.CipherVector) ([]float64, error)
+	// ExecuteOnProvider takes provided data and computes local result.
+	ExecuteOnProvider([][]float64) ([]float64, error)
+	// ExecuteOnClient takes aggregated result and compute global result.
+	ExecuteOnClient([]float64) ([]float64, error)
 
 	// GetInputSize returns the needed input width.
 	GetInputSize() uint
-
 	// GetEncodedSize returns the CipherVector width.
 	GetEncodedSize() uint
 }
