@@ -114,6 +114,12 @@ func run(c *cli.Context) error {
 	}
 
 	var loader provider.Loader
+	if c := conf.DataProvider.Random; c != nil {
+		loader, err = loaders.NewRandom(1, 1, 10) // TODO allow custom setting
+		if err != nil {
+			return err
+		}
+	}
 	if c := conf.DataProvider.FileLoader; c != nil {
 		loader, err = loaders.NewFileLoader(c.Path)
 		if err != nil {

@@ -123,6 +123,23 @@ func surveyRun(c *cli.Context) error {
 		return errors.New("Operation can't take #Sources")
 	}
 
+	query := libdrynx.Query{
+		Operation:   operation,
+		Ranges:      []*[]int64{}, // range for each output of operation
+		Proofs:      int(0),       // 0 == no proof, 1 == proof, 2 == optimized proof
+		Obfuscation: false,
+		DiffP: libdrynx.QueryDiffP{ // differential privacy
+			LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
+		IVSigs: libdrynx.QueryIVSigs{
+			InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
+			InputValidationSize1: 0,
+			InputValidationSize2: 0,
+		},
+		RosterVNs:     &roster,
+		CuttingFactor: 0,
+		Selector:      *conf.Survey.Sources,
+	}
+
 	_, aggregations, err := client.SendSurveyQuery(libdrynx.SurveyQuery{
 		SurveyID:      *conf.Survey.Name,
 		RosterServers: roster,
@@ -139,24 +156,7 @@ func surveyRun(c *cli.Context) error {
 		RangeProofThreshold:        0,
 		KeySwitchingProofThreshold: 0,
 
-		Query: libdrynx.Query{
-			Operation:   operation,
-			Ranges:      []*[]int64{}, // range for each output of operation
-			Proofs:      int(0),       // 0 == no proof, 1 == proof, 2 == optimized proof
-			Obfuscation: false,
-			DiffP: libdrynx.QueryDiffP{ // differential privacy
-				LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
-			DPDataGen: libdrynx.QueryDPDataGen{ // how to group by
-				GroupByValues: []int64{1, 1, 1}, GenerateRows: 10, GenerateDataMin: int64(0), GenerateDataMax: int64(256)},
-			IVSigs: libdrynx.QueryIVSigs{
-				InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
-				InputValidationSize1: 0,
-				InputValidationSize2: 0,
-			},
-			RosterVNs:     &roster,
-			CuttingFactor: 0,
-			Selector:      *conf.Survey.Sources,
-		},
+		Query: query,
 	})
 	if err != nil {
 		return err

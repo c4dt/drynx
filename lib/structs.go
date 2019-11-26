@@ -144,14 +144,6 @@ type QueryDiffP struct {
 	Limit         float64
 }
 
-// QueryDPDataGen contains the query information for the generation of data at DP
-type QueryDPDataGen struct {
-	GroupByValues   []int64 // the number of groups = len(GroupByValues); number of categories for each group GroupByValues[i]
-	GenerateRows    int64
-	GenerateDataMin int64
-	GenerateDataMax int64
-}
-
 // QueryIVSigs contains parameters for input validation
 type QueryIVSigs struct {
 	InputValidationSigs  []*[]PublishSignatureBytes
@@ -170,9 +162,6 @@ type Query struct {
 	Proofs      int
 	Obfuscation bool
 	DiffP       QueryDiffP
-
-	// define how the DPs generate dummy data
-	DPDataGen QueryDPDataGen
 
 	// identity skipchain simulation
 	IVSigs    QueryIVSigs
@@ -508,11 +497,6 @@ func CheckParameters(sq SurveyQuery, diffP bool) bool {
 			result = false
 			message = message + "diffP but parameters are 0 \n"
 		}
-	}
-
-	if sq.Query.Operation.QueryMin != sq.Query.DPDataGen.GenerateDataMin || sq.Query.Operation.QueryMax != sq.Query.DPDataGen.GenerateDataMax {
-		result = false
-		message = message + "min or max are inconsistent at DP and operations \n"
 	}
 
 	if message != "" {

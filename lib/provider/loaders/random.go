@@ -1,28 +1,33 @@
 package loaders
 
 import (
+	"errors"
 	"math/rand"
 
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/provider"
 )
 
-type random struct{}
-
-// NewRandom create a Loader of random values.
-func NewRandom() (provider.Loader, error) {
-	return random{}, nil
+type random struct {
+	min, max float64
+	rows     uint
 }
 
-func (random) Provide(query libdrynx.Query) ([][]float64, error) {
-	ret := make([][]float64, query.Operation.NbrInput)
+// NewRandom create a Loader of random values.
+func NewRandom(min, max float64, rows uint) (provider.Loader, error) {
+	if min > max {
+		return nil, errors.New("minimum > maximum")
+	}
+	return random{min, max, rows}, nil
+}
 
-	min, max := query.DPDataGen.GenerateDataMin, query.DPDataGen.GenerateDataMax
+func (r random) Provide(query libdrynx.Query) ([][]float64, error) {
+	ret := make([][]float64, len(query.Selector))
 
 	for i := range ret {
-		arr := make([]float64, query.DPDataGen.GenerateRows)
+		arr := make([]float64, r.rows)
 		for j := range arr {
-			arr[j] = float64(min + rand.Int63n(max-min))
+			arr[j] = r.min + rand.Float64()*(r.max-r.min)
 		}
 		ret[i] = arr
 	}
