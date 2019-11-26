@@ -123,11 +123,11 @@ var msgTypes = MsgTypes{}
 // Process implements the processor interface and is used to recognize messages broadcasted between servers
 func (s *ServiceDrynx) Process(msg *network.Envelope) {
 	if msg.MsgType.Equal(msgTypes.msgSurveyQuery) {
-		tmp := (msg.Msg).(*conv.SurveyQueryMarshallable)
+		tmp := (msg.Msg).(*conv.SurveyQuery)
 		_, err := s.HandleSurveyQuery(tmp)
 		log.ErrFatal(err)
 	} else if msg.MsgType.Equal(msgTypes.msgSurveyQueryToDP) {
-		tmp := (msg.Msg).(*conv.SurveyQueryToDPMarshallable)
+		tmp := (msg.Msg).(*conv.SurveyQueryToDP)
 		_, err := s.HandleSurveyQueryToDP(tmp)
 		log.ErrFatal(err)
 	} else if waitOnLocalChans && msg.MsgType.Equal(msgTypes.msgDPqueryReceived) {
@@ -179,7 +179,7 @@ func (s *ServiceDrynx) HandleDPdataFinished(recq *DPdataFinished) (network.Messa
 }
 
 // HandleSurveyQuery handles the reception of a survey creation query by instantiating the corresponding survey.
-func (s *ServiceDrynx) HandleSurveyQuery(marshallable *conv.SurveyQueryMarshallable) (network.Message, error) {
+func (s *ServiceDrynx) HandleSurveyQuery(marshallable *conv.SurveyQuery) (network.Message, error) {
 	prefixWithID := func(args []interface{}) []interface{} {
 		arr := make([]interface{}, len(args)+2)
 		arr[0] = "[SERVICE] <drynx> Server"
@@ -196,7 +196,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(marshallable *conv.SurveyQueryMarshalla
 
 	info("received a [SurveyQuery]")
 
-	recqValue, err := conv.SurveyQueryFromMarshallable(*marshallable)
+	recqValue, err := marshallable.ToSurveyQuery()
 	if err != nil {
 		die("when unmarshalling from network", err)
 	}
@@ -244,7 +244,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(marshallable *conv.SurveyQueryMarshalla
 		info("broadcasting [SurveyQuery] to CNs ")
 		recq.IntraMessage = true
 		// to other computing servers
-		marshallable, err := conv.ToSurveyQueryMarshallable(*recq)
+		marshallable, err := conv.FromSurveyQuery(*recq)
 		if err != nil {
 			die("unable to marshal SurveyQuery:", err)
 		}
@@ -259,7 +259,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(marshallable *conv.SurveyQueryMarshalla
 	listDPs := generateDataCollectionRoster(s.ServerIdentity(), recq.ServerToDP)
 	if listDPs != nil {
 		info("broadcasting [SurveyQuery] to DPs")
-		marshallable, err := conv.ToSurveyQueryToDPMarshallable(libdrynx.SurveyQueryToDP{SQ: *recq, Root: s.ServerIdentity()})
+		marshallable, err := conv.FromSurveyQueryToDP(libdrynx.SurveyQueryToDP{SQ: *recq, Root: s.ServerIdentity()})
 		if err != nil {
 			die("unable to marshal SurveyQueryToDP:", err)
 		}

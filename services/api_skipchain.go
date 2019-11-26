@@ -17,7 +17,7 @@ import (
 // SendSurveyQueryToVNs creates a survey based on a set of entities (servers) and a survey description.
 func (c *API) SendSurveyQueryToVNs(entities *onet.Roster, query *libdrynx.SurveyQuery) error {
 	for _, si := range entities.List {
-		marshallable, err := conv.ToSurveyQueryToVNMarshallable(
+		marshallable, err := conv.FromSurveyQueryToVN(
 			libdrynx.SurveyQueryToVN{SQ: *query})
 		if err != nil {
 			return err

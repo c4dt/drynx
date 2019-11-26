@@ -154,6 +154,7 @@ type QueryIVSigs struct {
 // ColumnID is a reference to a "column" the Loader can extract
 type ColumnID string
 
+// Operation2 is an statistical operator to be run on the network.
 // TODO from operations/index.go, put it back when migration done
 type Operation2 interface {
 	// ApplyOnProvider encodes loaded data using given public key.

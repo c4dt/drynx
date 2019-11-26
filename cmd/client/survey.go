@@ -69,7 +69,7 @@ func surveySetOperation(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("need an operation")
 	}
-	var parsedRange *conv.RangeMarshallable
+	var parsedRange *conv.Range
 	if rawRange := c.String("range"); rawRange != "" {
 		splitted := strings.SplitN(rawRange, ",", 2)
 		if len(splitted) != 2 {
@@ -86,10 +86,10 @@ func surveySetOperation(c *cli.Context) error {
 			return err
 		}
 
-		parsedRange = &conv.RangeMarshallable{Min: min, Max: max}
+		parsedRange = &conv.Range{Min: min, Max: max}
 	}
 
-	operation := conv.OperationMarshallable{
+	operation := conv.Operation{
 		Name:  args.Get(0),
 		Range: parsedRange,
 	}
@@ -153,9 +153,13 @@ func surveyRun(c *cli.Context) error {
 		return errors.New("Operation can't take #Sources")
 	}
 
-	op, err := conv.OperationFromMarshallable(*conf.Survey.Operation)
+	op, err := conf.Survey.Operation.ToOperation()
 	if err != nil {
 		return err
+	}
+	// TODO mv to survey consistency
+	if op.GetInputSize() != uint(len(*conf.Survey.Sources)) {
+		return errors.New("Operation can't take #Sources")
 	}
 
 	query := libdrynx.Query{

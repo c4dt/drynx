@@ -6,22 +6,25 @@ import (
 	onet_network "go.dedis.ch/onet/v3/network"
 )
 
-type SurveyQueryToDPMarshallable struct {
-	SQ   SurveyQueryMarshallable
+// SurveyQueryToDP is a serializable libdrynx.SurveyQueryToDP.
+type SurveyQueryToDP struct {
+	SQ   SurveyQuery
 	Root *onet_network.ServerIdentity
 }
 
-func SurveyQueryToDPFromMarshallable(sqm SurveyQueryToDPMarshallable) (libdrynx.SurveyQueryToDP, error) {
-	sq, err := SurveyQueryFromMarshallable(sqm.SQ)
+// ToSurveyQueryToDP deserialize.
+func (sqm SurveyQueryToDP) ToSurveyQueryToDP() (libdrynx.SurveyQueryToDP, error) {
+	sq, err := sqm.SQ.ToSurveyQuery()
 	return libdrynx.SurveyQueryToDP{
 		SQ:   sq,
 		Root: sqm.Root,
 	}, err
 }
 
-func ToSurveyQueryToDPMarshallable(sq libdrynx.SurveyQueryToDP) (SurveyQueryToDPMarshallable, error) {
-	sqm, err := ToSurveyQueryMarshallable(sq.SQ)
-	return SurveyQueryToDPMarshallable{
+// FromSurveyQueryToDP serialize.
+func FromSurveyQueryToDP(sq libdrynx.SurveyQueryToDP) (SurveyQueryToDP, error) {
+	sqm, err := FromSurveyQuery(sq.SQ)
+	return SurveyQueryToDP{
 		SQ:   sqm,
 		Root: sq.Root,
 	}, err

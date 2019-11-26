@@ -13,8 +13,8 @@ import (
 //______________________________________________________________________________________________________________________
 
 // HandleSurveyQueryToDP handles the reception of a query at a DP
-func (s *ServiceDrynx) HandleSurveyQueryToDP(marshallable *conv.SurveyQueryToDPMarshallable) (network.Message, error) {
-	recqValue, err := conv.SurveyQueryToDPFromMarshallable(*marshallable)
+func (s *ServiceDrynx) HandleSurveyQueryToDP(marshallable *conv.SurveyQueryToDP) (network.Message, error) {
+	recqValue, err := marshallable.ToSurveyQueryToDP()
 	if err != nil {
 		return nil, err
 	}

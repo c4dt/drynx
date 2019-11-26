@@ -6,8 +6,9 @@ import (
 	"github.com/ldsec/drynx/lib"
 )
 
-type QueryMarshallable struct {
-	Operation2 OperationMarshallable
+// Query is a serializable libdrynx.Query.
+type Query struct {
+	Operation2 Operation
 
 	// from old Query
 
@@ -29,24 +30,25 @@ type QueryMarshallable struct {
 	Selector []libdrynx.ColumnID
 }
 
-func QueryFromMarshallable(marshallable QueryMarshallable) (libdrynx.Query, error) {
-	ivSigs := marshallable.IVSigs
-	ivSigs.InputValidationSigs = recreateRangeSignatures(marshallable.IVSigs)
+// ToQuery deserialize.
+func (q Query) ToQuery() (libdrynx.Query, error) {
+	ivSigs := q.IVSigs
+	ivSigs.InputValidationSigs = recreateRangeSignatures(q.IVSigs)
 
-	op, err := OperationFromMarshallable(marshallable.Operation2)
+	op, err := q.Operation2.ToOperation()
 
 	return libdrynx.Query{
 		Operation2: op,
 
-		Operation:     marshallable.Operation,
-		Ranges:        marshallable.Ranges,
-		Proofs:        marshallable.Proofs,
-		Obfuscation:   marshallable.Obfuscation,
-		DiffP:         marshallable.DiffP,
+		Operation:     q.Operation,
+		Ranges:        q.Ranges,
+		Proofs:        q.Proofs,
+		Obfuscation:   q.Obfuscation,
+		DiffP:         q.DiffP,
 		IVSigs:        ivSigs,
-		RosterVNs:     marshallable.RosterVNs,
-		CuttingFactor: marshallable.CuttingFactor,
-		Selector:      marshallable.Selector,
+		RosterVNs:     q.RosterVNs,
+		CuttingFactor: q.CuttingFactor,
+		Selector:      q.Selector,
 	}, err
 }
 
@@ -71,9 +73,10 @@ func recreateRangeSignatures(ivSigs libdrynx.QueryIVSigs) []*[]libdrynx.PublishS
 	return recreate
 }
 
-func ToQueryMarshallable(q libdrynx.Query) (QueryMarshallable, error) {
-	op, err := ToOperationMarshallable(q.Operation2)
-	return QueryMarshallable{
+// FromQuery serialize.
+func FromQuery(q libdrynx.Query) (Query, error) {
+	op, err := FromOperation(q.Operation2)
+	return Query{
 		Operation2: op,
 
 		Operation:     q.Operation,

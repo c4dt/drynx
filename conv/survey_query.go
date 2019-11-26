@@ -8,8 +8,9 @@ import (
 	"github.com/ldsec/drynx/lib"
 )
 
-type SurveyQueryMarshallable struct {
-	Query QueryMarshallable
+// SurveyQuery is a serializable libdrynx.SurveyQuery.
+type SurveyQuery struct {
+	Query Query
 
 	// from old SurveyQuery
 
@@ -30,27 +31,29 @@ type SurveyQueryMarshallable struct {
 	KeySwitchingProofThreshold float64
 }
 
-func SurveyQueryFromMarshallable(marshallable SurveyQueryMarshallable) (libdrynx.SurveyQuery, error) {
-	query, err := QueryFromMarshallable(marshallable.Query)
+// ToSurveyQuery deserialize.
+func (sq SurveyQuery) ToSurveyQuery() (libdrynx.SurveyQuery, error) {
+	query, err := sq.Query.ToQuery()
 	return libdrynx.SurveyQuery{
 		Query:                      query,
-		SurveyID:                   marshallable.SurveyID,
-		RosterServers:              marshallable.RosterServers,
-		ClientPubKey:               marshallable.ClientPubKey,
-		IntraMessage:               marshallable.IntraMessage,
-		ServerToDP:                 marshallable.ServerToDP,
-		IDtoPublic:                 marshallable.IDtoPublic,
-		Threshold:                  marshallable.Threshold,
-		AggregationProofThreshold:  marshallable.AggregationProofThreshold,
-		ObfuscationProofThreshold:  marshallable.ObfuscationProofThreshold,
-		RangeProofThreshold:        marshallable.RangeProofThreshold,
-		KeySwitchingProofThreshold: marshallable.KeySwitchingProofThreshold,
+		SurveyID:                   sq.SurveyID,
+		RosterServers:              sq.RosterServers,
+		ClientPubKey:               sq.ClientPubKey,
+		IntraMessage:               sq.IntraMessage,
+		ServerToDP:                 sq.ServerToDP,
+		IDtoPublic:                 sq.IDtoPublic,
+		Threshold:                  sq.Threshold,
+		AggregationProofThreshold:  sq.AggregationProofThreshold,
+		ObfuscationProofThreshold:  sq.ObfuscationProofThreshold,
+		RangeProofThreshold:        sq.RangeProofThreshold,
+		KeySwitchingProofThreshold: sq.KeySwitchingProofThreshold,
 	}, err
 }
 
-func ToSurveyQueryMarshallable(sq libdrynx.SurveyQuery) (SurveyQueryMarshallable, error) {
-	q, err := ToQueryMarshallable(sq.Query)
-	return SurveyQueryMarshallable{
+// FromSurveyQuery serialize.
+func FromSurveyQuery(sq libdrynx.SurveyQuery) (SurveyQuery, error) {
+	q, err := FromQuery(sq.Query)
+	return SurveyQuery{
 		Query:                      q,
 		SurveyID:                   sq.SurveyID,
 		RosterServers:              sq.RosterServers,

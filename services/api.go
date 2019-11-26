@@ -60,17 +60,17 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 		size2 = len(*ps[0])
 	}
 
-	var parsedRange *conv.RangeMarshallable
+	var parsedRange *conv.Range
 	if operation.NameOp == "frequencyCount" {
-		parsedRange = &conv.RangeMarshallable{
+		parsedRange = &conv.Range{
 			Min: operation.QueryMin,
 			Max: operation.QueryMax,
 		}
 	}
-	op, err := conv.OperationFromMarshallable(conv.OperationMarshallable{
+	op, err := conv.Operation{
 		Name:  operation.NameOp,
 		Range: parsedRange,
-	})
+	}.ToOperation()
 	if err != nil {
 		panic(err)
 	}
@@ -117,7 +117,7 @@ func (c *API) SendSurveyQuery(sq libdrynx.SurveyQuery) (*[]string, *[][]float64,
 
 	//send the query and get the answer
 	sr := libdrynx.ResponseDP{}
-	marshallable, err := conv.ToSurveyQueryMarshallable(sq)
+	marshallable, err := conv.FromSurveyQuery(sq)
 	if err != nil {
 		return nil, nil, err
 	}

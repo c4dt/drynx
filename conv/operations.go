@@ -8,51 +8,52 @@ import (
 	"github.com/ldsec/drynx/lib/operations"
 )
 
-// RangeMarshallable is a range.
-type RangeMarshallable struct{ Min, Max int64 }
+// Range is a segment.
+type Range struct{ Min, Max int64 }
 
-// OperationMarshallable represents a serialisable Operation.
-type OperationMarshallable struct {
+// Operation represents a serialisable Operation.
+type Operation struct {
 	Name  string
-	Range *RangeMarshallable
+	Range *Range
 }
 
-func OperationFromMarshallable(marshallable OperationMarshallable) (libdrynx.Operation2, error) {
-	if marshallable.Range == nil {
-		switch marshallable.Name {
+// ToOperation converts to Operation2.
+func (op Operation) ToOperation() (libdrynx.Operation2, error) {
+	if op.Range == nil {
+		switch op.Name {
 		case "sum":
 			return operations.Sum{}, nil
 		case "cosim":
 			return operations.CosineSimilarity{}, nil
 		}
 	} else {
-		r := *marshallable.Range
+		r := *op.Range
 		if r.Min > r.Max {
 			return nil, errors.New("min greater than max")
 		}
-		switch marshallable.Name {
+		switch op.Name {
 		case "frequencyCount":
 			return operations.NewFrequencyCount(r.Min, r.Max)
 		}
 	}
 
-	return nil, fmt.Errorf("unable to unmarshal operation: %v", marshallable)
+	return nil, fmt.Errorf("unable to unmarshal operation: %v", op)
 }
 
-// ToOperationMarshallable converts from Operation2.
-func ToOperationMarshallable(operation libdrynx.Operation2) (OperationMarshallable, error) {
+// FromOperation converts from Operation2.
+func FromOperation(operation libdrynx.Operation2) (Operation, error) {
 	switch op := operation.(type) {
 	case operations.Sum:
-		return OperationMarshallable{Name: "sum"}, nil
+		return Operation{Name: "sum"}, nil
 	case operations.CosineSimilarity:
-		return OperationMarshallable{Name: "cosim"}, nil
+		return Operation{Name: "cosim"}, nil
 	case operations.FrequencyCount:
 		min, max := op.GetMinMax()
-		return OperationMarshallable{
+		return Operation{
 			Name:  "frequencyCount",
-			Range: &RangeMarshallable{min, max},
+			Range: &Range{min, max},
 		}, nil
 	}
 
-	return OperationMarshallable{}, fmt.Errorf("unable to marshal operation: %v", operation)
+	return Operation{}, fmt.Errorf("unable to marshal operation: %v", operation)
 }

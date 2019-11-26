@@ -29,8 +29,8 @@ var VerificationBitmap = []skipchain.VerifierID{VerifyBitmap, skipchain.VerifyBa
 //______________________________________________________________________________________________________________________
 
 // HandleSurveyQueryToVN handles the reception of the query at a VN
-func (s *ServiceDrynx) HandleSurveyQueryToVN(marshallable *conv.SurveyQueryToVNMarshallable) (network.Message, error) {
-	recqValue, err := conv.SurveyQueryToVNFromMarshallable(*marshallable)
+func (s *ServiceDrynx) HandleSurveyQueryToVN(marshallable *conv.SurveyQueryToVN) (network.Message, error) {
+	recqValue, err := marshallable.ToSurveyQueryToVN()
 	if err != nil {
 		return nil, err
 	}

@@ -4,16 +4,19 @@ import (
 	"github.com/ldsec/drynx/lib"
 )
 
-type SurveyQueryToVNMarshallable struct {
-	SQ SurveyQueryMarshallable
+// SurveyQueryToVN is a serializable libdrynx.SurveyQueryToVN.
+type SurveyQueryToVN struct {
+	SQ SurveyQuery
 }
 
-func SurveyQueryToVNFromMarshallable(marshallable SurveyQueryToVNMarshallable) (libdrynx.SurveyQueryToVN, error) {
-	sq, err := SurveyQueryFromMarshallable(marshallable.SQ)
+// ToSurveyQueryToVN deserialize.
+func (sqvn SurveyQueryToVN) ToSurveyQueryToVN() (libdrynx.SurveyQueryToVN, error) {
+	sq, err := sqvn.SQ.ToSurveyQuery()
 	return libdrynx.SurveyQueryToVN{SQ: sq}, err
 }
 
-func ToSurveyQueryToVNMarshallable(sq libdrynx.SurveyQueryToVN) (SurveyQueryToVNMarshallable, error) {
-	sqm, err := ToSurveyQueryMarshallable(sq.SQ)
-	return SurveyQueryToVNMarshallable{sqm}, err
+// FromSurveyQueryToVN serialize.
+func FromSurveyQueryToVN(sq libdrynx.SurveyQueryToVN) (SurveyQueryToVN, error) {
+	sqm, err := FromSurveyQuery(sq.SQ)
+	return SurveyQueryToVN{sqm}, err
 }

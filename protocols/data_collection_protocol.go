@@ -210,6 +210,9 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 
 		return libdrynx.ResponseDPBytes{Data: grouped, Len: 1}
 	}
+	if uint(len(providedData)) != p.Survey.Query.Operation2.GetInputSize() {
+		log.Errorf("loader didn't gave expected width")
+	}
 
 	// logistic regression specific
 	var xFloat [][]float64

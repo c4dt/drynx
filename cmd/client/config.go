@@ -18,7 +18,7 @@ type configNetwork struct {
 }
 type configSurvey struct {
 	Name      *string
-	Operation *conv.OperationMarshallable
+	Operation *conv.Operation
 	Sources   *[]libdrynx.ColumnID
 }
 type config struct {
