@@ -367,14 +367,8 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 		thresholdEntityProofsVerif = []float64{sim.ThresholdGeneral, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther}
 	}
 	sq := client.GenerateSurveyQuery(rosterServers, rosterVNs, dpToServers, idToPublic, surveyID, operation, ranges, ps, sim.Proofs, sim.Obfuscation, thresholdEntityProofsVerif, diffP, sim.CuttingFactor)
-	if diffP.NoiseListSize > 0 {
-		if !libdrynx.CheckParameters(sq, true) {
-			log.Fatal("Oups!")
-		}
-	} else {
-		if !libdrynx.CheckParameters(sq, false) {
-			log.Fatal("Oups!")
-		}
+	if !libdrynx.CheckParameters(sq, diffP.NoiseListSize > 0) {
+		log.Fatal("Oups!")
 	}
 
 	overallTimer := time.Now()
