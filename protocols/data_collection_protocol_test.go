@@ -17,19 +17,19 @@ import (
 	"go.dedis.ch/onet/v3/network"
 )
 
-func createTestQuery(aggregate kyber.Point, operationName string, proofs int, nbrRows int64, minGenerateData, maxGenerateData, dimensions int, cuttingFactor int) (protocols.SurveyToDP, error) {
+var randomRange = [2]float64{1, 2}
+
+func createTestQuery(aggregate kyber.Point, operationName string, proofs int, dimensions int, cuttingFactor int) (protocols.SurveyToDP, error) {
 	var queryStatement protocols.SurveyToDP
 	var query libdrynx.Query
 
 	queryStatement.SurveyID = "query_test"
 	queryStatement.Aggregate = aggregate
 
-	query.Operation = libdrynx.ChooseOperation(operationName, minGenerateData, maxGenerateData, dimensions, cuttingFactor)
+	query.Operation = libdrynx.ChooseOperation(operationName, int(randomRange[0]), int(randomRange[1]), dimensions, cuttingFactor)
 	query.Proofs = proofs
-
-	// define the number of groups for groupBy (1 per default)
-	dpData := libdrynx.QueryDPDataGen{GroupByValues: []int64{1}, GenerateRows: nbrRows, GenerateDataMin: int64(minGenerateData), GenerateDataMax: int64(maxGenerateData)}
-	query.DPDataGen = dpData
+	selector := [2]libdrynx.ColumnID{}
+	query.Selector = selector[:]
 
 	queryStatement.Query = query
 
@@ -57,7 +57,7 @@ func TestDataCollectionOperationsProtocol(t *testing.T) {
 	for _, op := range operationList {
 		// create query
 		var err error
-		query, err = createTestQuery(pubKey, op, 0, 10, 1, 2, 5, 0)
+		query, err = createTestQuery(pubKey, op, 0, 5, 0)
 		assert.Nil(t, err, "Error when generating test query")
 
 		rootInstance, err := local.CreateProtocol("DataCollectionTest", tree)
@@ -94,7 +94,7 @@ func TestDataCollectionOperationsProtocol(t *testing.T) {
 
 // NewDataCollectionTest is a test specific protocol instance constructor that injects test data.
 func NewDataCollectionTest(tni *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
-	loader, err := loaders.NewRandom()
+	loader, err := loaders.NewRandom(randomRange[0], randomRange[1], 10)
 	if err != nil {
 		return nil, err
 	}

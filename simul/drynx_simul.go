@@ -21,20 +21,6 @@ import (
 	"gopkg.in/satori/go.uuid.v1"
 )
 
-func init() {
-	loader, err := loaders.NewRandom()
-	if err != nil {
-		panic(err)
-	}
-	services.NewBuilder().
-		WithComputingNode().
-		WithDataProvider(loader).
-		WithVerifyingNode().
-		Start()
-
-	onet.SimulationRegister("ServiceDrynx", NewSimulationDrynx)
-}
-
 // SimulationDrynx state of a simulation.
 type SimulationDrynx struct {
 	onet.SimulationBFTree
@@ -71,7 +57,7 @@ type SimulationDrynx struct {
 
 	// Data and query response
 	GroupByValues []int64
-	DPRows        int
+	DPRows        uint
 	MinData       int64
 	MaxData       int64
 
@@ -86,6 +72,16 @@ func NewSimulationDrynx(config string) (onet.Simulation, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	loader, err := loaders.NewRandom(float64(sl.MinData), float64(sl.MaxData), sl.DPRows)
+	if err != nil {
+		panic(err)
+	}
+	services.NewBuilder().
+		WithComputingNode().
+		WithDataProvider(loader).
+		WithVerifyingNode().
+		Start()
 
 	return sl, nil
 }
@@ -110,7 +106,6 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 	os.Remove("pre_compute_multiplications.gob")
 
 	// has to be set here because cannot be in toml file
-	dpData := libdrynx.QueryDPDataGen{GroupByValues: sim.GroupByValues, GenerateRows: int64(sim.DPRows), GenerateDataMin: sim.MinData, GenerateDataMax: sim.MaxData}
 	diffP := libdrynx.QueryDiffP{LapMean: sim.DiffPEpsilon, LapScale: sim.DiffPDelta, Quanta: sim.DiffPQuanta, NoiseListSize: sim.DiffPSize, Scale: sim.DiffPScale, Limit: sim.DiffPLimit}
 
 	//logistic regression
@@ -371,7 +366,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 	} else {
 		thresholdEntityProofsVerif = []float64{sim.ThresholdGeneral, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther}
 	}
-	sq := client.GenerateSurveyQuery(rosterServers, rosterVNs, dpToServers, idToPublic, surveyID, operation, ranges, ps, sim.Proofs, sim.Obfuscation, thresholdEntityProofsVerif, diffP, dpData, sim.CuttingFactor)
+	sq := client.GenerateSurveyQuery(rosterServers, rosterVNs, dpToServers, idToPublic, surveyID, operation, ranges, ps, sim.Proofs, sim.Obfuscation, thresholdEntityProofsVerif, diffP, sim.CuttingFactor)
 	if diffP.NoiseListSize > 0 {
 		if !libdrynx.CheckParameters(sq, true) {
 			log.Fatal("Oups!")

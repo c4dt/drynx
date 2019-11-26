@@ -173,10 +173,7 @@ func (p *DataCollectionProtocol) Dispatch() error {
 // GenerateData is used to generate data at DPs, this is more for simulation's purposes
 func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	// Prepare the generation of all possible groups with the query information.
-	numType := make([]int64, len(p.Survey.Query.DPDataGen.GroupByValues))
-	for i, v := range p.Survey.Query.DPDataGen.GroupByValues {
-		numType[i] = v
-	}
+	numType := []int64{1}
 	mutexGroups.Lock()
 
 	groups := make([][]int64, 0)

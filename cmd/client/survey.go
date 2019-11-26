@@ -167,8 +167,6 @@ func surveyRun(c *cli.Context) error {
 		Obfuscation: false,
 		DiffP: libdrynx.QueryDiffP{ // differential privacy
 			LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
-		DPDataGen: libdrynx.QueryDPDataGen{ // how to group by
-			GroupByValues: []int64{3, 2, 1}, GenerateRows: 10, GenerateDataMin: int64(0), GenerateDataMax: int64(256)},
 		IVSigs: libdrynx.QueryIVSigs{
 			InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
 			InputValidationSize1: 0,
