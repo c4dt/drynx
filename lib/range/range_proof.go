@@ -274,17 +274,17 @@ func InitRangeProofSignature(u int64) libdrynx.PublishSignatureBytes {
 
 	//pick a pair private(x)/public(y) key at each server
 	keys := key.NewKeyPair(libunlynx.SuiTe)
-	kPub, kPriv := keys.Public, keys.Private
+	pub, priv := keys.Public, keys.Private
 
 	//signature from private key done by server
 	for i := 0; int64(i) < int64(u); i++ {
 		scalar := g2.Scalar().SetInt64(int64(i))
-		invert := g2.Scalar().Add(kPriv, scalar)
+		invert := g2.Scalar().Add(priv, scalar)
 		tmp := g2.Point().Mul(g2.Scalar().Inv(invert), g2.Point().Base())
 		tmpByte, _ := tmp.MarshalBinary()
 		A = append(A, tmpByte...)
 	}
-	return libdrynx.PublishSignatureBytes{Signature: A, Public: kPub}
+	return libdrynx.PublishSignatureBytes{Signature: A, Public: pub}
 }
 
 //PublishSignatureBytesToPublishSignatures creates servers' signatures directly in bytes
