@@ -1,0 +1,25 @@
+{
+  "name": "drynx-ts",
+  "version": "0.0.1",
+  "description": "Drynx library in ts",
+  "main": "index.js",
+  "scripts": {
+    "test": "ts-node node_modules/jasmine/bin/jasmine --config=jasmine.json"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@dedis/kyber": "^3.4.0",
+    "crypto-browserify": "^3.12.0"
+  },
+  "devDependencies": {
+    "@dedis/cothority": "^3.4.1",
+    "@types/jasmine": "^3.5.0",
+    "jasmine": "^3.5.0",
+    "jsverify": "^0.8.4",
+    "nyc": "^14.1.1",
+    "ts-node": "^8.5.4",
+    "tslib": "^1.10.0",
+    "typescript": "^3.7.3"
+  }
+}
