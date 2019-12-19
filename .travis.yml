@@ -3,9 +3,20 @@ dist: trusty
 language: go
 go: stable
 
+env:
+  DOCKER_USERNAME: c4dtbot
+  DOCKER_IMAGE: c4dt/drynx:latest
+
 before_install: make test_lint test_fmt
 install: go get -t ./...
-script: make test_goveralls
+script: make docker test_goveralls
+deploy:
+  provider: script
+  script: >-
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin &&
+    docker push $DOCKER_IMAGE
+  on:
+    branch: travis
 
 notifications:
   email: false
