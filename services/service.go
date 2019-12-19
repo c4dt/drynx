@@ -190,7 +190,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 		log.Info(prefixWithID(args)...)
 	}
 	die := func(args ...interface{}) {
-		log.Error(prefixWithID(args)...)
+		log.Fatal(prefixWithID(args)...)
 	}
 
 	info("received a [SurveyQuery]")
@@ -201,7 +201,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	nbrDPs := 0
 	for _, v := range recq.ServerToDP {
 		if v != nil {
-			nbrDPs += len(*v)
+			nbrDPs += len(v.Content)
 		}
 	}
 
@@ -239,7 +239,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 		info("broadcasting [SurveyQuery] to CNs ")
 		recq.IntraMessage = true
 		// to other computing servers
-		err := libunlynxtools.SendISMOthers(s.ServiceProcessor, &recq.RosterServers, recq)
+		err = libunlynxtools.SendISMOthers(s.ServiceProcessor, &recq.RosterServers, recq)
 		if err != nil {
 			die("broadcasting [SurveyQuery] to CNs error", err)
 		}
@@ -247,11 +247,18 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	}
 
 	// to the DPs
-	listDPs := generateDataCollectionRoster(s.ServerIdentity(), recq.ServerToDP)
-	if listDPs != nil {
+	CNsToDPs := make(map[string]*[]network.ServerIdentity)
+	for cn, dps := range recq.ServerToDP {
+		CNsToDPs[cn] = &dps.Content
+	}
+
+	listDPs := generateDataCollectionRoster(s.ServerIdentity(), CNsToDPs)
+	if listDPs == nil {
+		log.Warn("no DPs to broadcast to")
+	} else {
 		info("broadcasting [SurveyQuery] to DPs")
-		err := libunlynxtools.SendISMOthers(s.ServiceProcessor, listDPs, &libdrynx.SurveyQueryToDP{SQ: *recq, Root: s.ServerIdentity()})
-		if err != nil {
+		surveyToDPs := libdrynx.SurveyQueryToDP{SQ: *recq, Root: s.ServerIdentity()}
+		if err := libunlynxtools.SendISMOthers(s.ServiceProcessor, listDPs, &surveyToDPs); err != nil {
 			die("broadcasting [SurveyQuery] to DPs error", err)
 		}
 	}
@@ -273,7 +280,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	// wait for all DPs to get the query
 	if waitOnLocalChans && listDPs != nil {
 		info("waiting on DPs to receive the query")
-		counter := len(*recq.ServerToDP[s.ServerIdentity().String()])
+		counter := len(*CNsToDPs[s.ServerIdentity().String()])
 		for counter > 0 {
 			counter = counter - (<-castToSurvey(s.Survey.Get(recq.SurveyID)).DPqueryChannel)
 		}
@@ -337,7 +344,19 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 		survey := castToSurvey(s.Survey.Get(recq.SurveyID))
 		result := survey.QueryResponseState
 		libunlynx.EndTimer(startJustExecution)
-		return &result, nil
+
+		ret := make(map[string]*libdrynx.CipherVector)
+		for _, group := range result.Data {
+			vec := make([]*libdrynx.CipherText, len(group.Data))
+
+			for j, e := range group.Data {
+				vec[j] = &libdrynx.CipherText{K: e.K, C: e.C}
+			}
+
+			ret[group.Group] = &libdrynx.CipherVector{Content: vec}
+		}
+
+		return &libdrynx.ResponseDP{Data: ret}, nil
 	}
 
 	return nil, nil
@@ -348,6 +367,10 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 
 // NewProtocol creates a protocol instance executed by all nodes
 func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
+	if conf == nil {
+		return nil, errors.New("conf is nil")
+	}
+
 	err := tn.SetConfig(conf)
 	if err != nil {
 		return nil, err
@@ -378,7 +401,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 		return &dcp, nil
 
 	case protocolsunlynx.CollectiveAggregationProtocolName:
-		survey := castToSurvey(s.Survey.Get(target))
+		survey := s.waitForSurvey(target)
 		pi, err = s.NewCollectiveAggregationProtocol(tn, target, survey)
 		if err != nil {
 			return nil, err
@@ -586,9 +609,16 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 
 	var tree *onet.Tree
 	if name == protocols.DataCollectionProtocolName {
-		tree = generateDataCollectionRoster(s.ServerIdentity(), tmp.SurveyQuery.ServerToDP).GenerateStar()
+		CNsToDPs := make(map[string]*[]network.ServerIdentity)
+		for cn, dps := range tmp.SurveyQuery.ServerToDP {
+			CNsToDPs[cn] = &dps.Content
+		}
+		tree = generateDataCollectionRoster(s.ServerIdentity(), CNsToDPs).GenerateStar()
 	} else {
 		tree = tmp.SurveyQuery.RosterServers.GenerateNaryTreeWithRoot(2, s.ServerIdentity())
+	}
+	if tree == nil {
+		return nil, errors.New("unable to generate tree")
 	}
 
 	var tn *onet.TreeNodeInstance
@@ -632,7 +662,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 	aggregationTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_AggregationPhase")
 	err := s.AggregationPhase(target.SurveyQuery.SurveyID)
 	if err != nil {
-		log.Fatal("Error in the Aggregation Phase")
+		log.Fatal("Error in the Aggregation Phase:", err)
 	}
 	libunlynx.EndTimer(aggregationTimer)
 
@@ -640,7 +670,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 		//obfuscationTimer := libDrynx.StartTimer(s.ServerIdentity().String() + "_ObfuscationPhase")
 		err := s.ObfuscationPhase(target.SurveyQuery.SurveyID)
 		if err != nil {
-			log.Fatal("Error in the Obfuscation Phase")
+			log.Fatal("Error in the Obfuscation Phase:", err)
 		}
 		//libDrynx.EndTimer(obfuscationTimer)
 	}
@@ -829,8 +859,8 @@ func generateDataCollectionRoster(root *network.ServerIdentity, serverToDP map[s
 	return nil
 }
 
-func recreateRangeSignatures(ivSigs libdrynx.QueryIVSigs) []*[]libdrynx.PublishSignatureBytes {
-	recreate := make([]*[]libdrynx.PublishSignatureBytes, 0)
+func recreateRangeSignatures(ivSigs libdrynx.QueryIVSigs) []*libdrynx.PublishSignatureBytesList {
+	recreate := make([]*libdrynx.PublishSignatureBytesList, 0)
 
 	// transform the one-dimensional array (because of protobuf) to the original two-dimensional array
 	indexInit := 0
@@ -838,10 +868,10 @@ func recreateRangeSignatures(ivSigs libdrynx.QueryIVSigs) []*[]libdrynx.PublishS
 		if i%ivSigs.InputValidationSize2 == 0 {
 			tmp := make([]libdrynx.PublishSignatureBytes, ivSigs.InputValidationSize2)
 			for j := range tmp {
-				tmp[j] = (*ivSigs.InputValidationSigs[indexInit])[0]
+				tmp[j] = (*ivSigs.InputValidationSigs[indexInit]).Content[0]
 				indexInit++
 			}
-			recreate = append(recreate, &tmp)
+			recreate = append(recreate, &libdrynx.PublishSignatureBytesList{Content: tmp})
 
 			indexInit = i
 		}

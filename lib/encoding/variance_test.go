@@ -75,7 +75,7 @@ func TestEncodeDecodeVarianceWithProofs(t *testing.T) {
 	u := []int64{2, 2, 2}
 	l := []int64{5, 3, 9}
 
-	ranges := make([]*[]int64, 3)
+	ranges := make([]*libdrynx.Int64List, 3)
 	ps := make([][]libdrynx.PublishSignature, 2)
 	ps[0] = make([]libdrynx.PublishSignature, 3)
 	ps[1] = make([]libdrynx.PublishSignature, 3)
@@ -87,7 +87,7 @@ func TestEncodeDecodeVarianceWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u[i]))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u[i], l[i]}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u[i], l[i]}}
 	}
 
 	yss := make([][]kyber.Point, 3)

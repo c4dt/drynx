@@ -72,7 +72,7 @@ func EncodeFreqCountWithProofs(input []int64, min int64, max int64, pubKey kyber
 		go func(i int, v int64) {
 			defer wg1.Done()
 			//input range validation proof
-			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i])[0], L: (*lu[i])[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: ciphertextTuples[i]}
+			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i]).Content[0], L: (*lu[i]).Content[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: ciphertextTuples[i]}
 		}(i, v)
 	}
 	libunlynx.EndParallelize(wg1)

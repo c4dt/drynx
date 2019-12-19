@@ -76,7 +76,7 @@ func TestEncodeDecodeUnionInterWithProofs(t *testing.T) {
 
 	ps := make([][]libdrynx.PublishSignature, 2)
 
-	ranges := make([]*[]int64, max-min+1)
+	ranges := make([]*libdrynx.Int64List, max-min+1)
 	ps[0] = make([]libdrynx.PublishSignature, max-min+1)
 	ps[1] = make([]libdrynx.PublishSignature, max-min+1)
 	ys := make([][]kyber.Point, 2)
@@ -87,7 +87,7 @@ func TestEncodeDecodeUnionInterWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u, l}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 	}
 
 	yss := make([][]kyber.Point, max-min+1)

@@ -169,11 +169,11 @@ func TestServiceDrynx(t *testing.T) {
 			}
 		}
 
-		ranges := make([]*[]int64, operation.NbrOutput)
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 		if rangeProofs {
 			for i := range ranges {
-				ranges[i] = &[]int64{u, l}
+				ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 			}
 		} else {
 			ranges = nil
@@ -189,7 +189,7 @@ func TestServiceDrynx(t *testing.T) {
 		}
 
 		// DPs signatures for Input Range Validation
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(elServers.List))
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(elServers.List))
 		//var modulo int
 		//if cuttingFactor != 0 {
 		//	modulo = operation.NbrOutput / cuttingFactor
@@ -199,12 +199,12 @@ func TestServiceDrynx(t *testing.T) {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if cuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -218,7 +218,7 @@ func TestServiceDrynx(t *testing.T) {
 		if ranges == nil || (u == int64(0) && l == int64(0)) {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)
@@ -498,11 +498,11 @@ func TestServiceDrynxLogisticRegressionForSPECTF(t *testing.T) {
 			}
 		}
 
-		ranges := make([]*[]int64, operation.NbrOutput)
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 		if rangeProofs {
 			for i := range ranges {
-				ranges[i] = &[]int64{u, l}
+				ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 			}
 		} else {
 			ranges = nil
@@ -518,7 +518,7 @@ func TestServiceDrynxLogisticRegressionForSPECTF(t *testing.T) {
 		}
 
 		// DPs signatures for Input Range Validation
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(elServers.List))
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(elServers.List))
 		//var modulo int
 		//if cuttingFactor != 0 {
 		//	modulo = operation.NbrOutput / cuttingFactor
@@ -528,12 +528,12 @@ func TestServiceDrynxLogisticRegressionForSPECTF(t *testing.T) {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if cuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -547,7 +547,7 @@ func TestServiceDrynxLogisticRegressionForSPECTF(t *testing.T) {
 		if ranges == nil || (u == int64(0) && l == int64(0)) {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)
@@ -884,10 +884,10 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 		u := int64(2)
 		l := int64(6)
 
-		ranges := make([]*[]int64, operation.NbrOutput)
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(el.List))
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(el.List))
 		for i := range ranges {
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		// if no input validation
 		//ranges = nil
@@ -897,9 +897,9 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 			for i := range el.List {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
-					temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+					temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -911,7 +911,7 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 		if ranges == nil {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)
@@ -1222,11 +1222,11 @@ func TestServiceDrynxLogisticRegressionV2(t *testing.T) {
 			}
 		}
 
-		ranges := make([]*[]int64, operation.NbrOutput)
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 		if rangeProofs {
 			for i := range ranges {
-				ranges[i] = &[]int64{u, l}
+				ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 			}
 		} else {
 			ranges = nil
@@ -1242,7 +1242,7 @@ func TestServiceDrynxLogisticRegressionV2(t *testing.T) {
 		}
 
 		// DPs signatures for Input Range Validation
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(elServers.List))
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(elServers.List))
 		//var modulo int
 		//if cuttingFactor != 0 {
 		//	modulo = operation.NbrOutput / cuttingFactor
@@ -1252,12 +1252,12 @@ func TestServiceDrynxLogisticRegressionV2(t *testing.T) {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if cuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -1271,7 +1271,7 @@ func TestServiceDrynxLogisticRegressionV2(t *testing.T) {
 		if ranges == nil || (u == int64(0) && l == int64(0)) {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)
@@ -1596,11 +1596,11 @@ func TestServiceDrynxLogisticRegressionBC(t *testing.T) {
 			}
 		}
 
-		ranges := make([]*[]int64, operation.NbrOutput)
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 		if rangeProofs {
 			for i := range ranges {
-				ranges[i] = &[]int64{u, l}
+				ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 			}
 		} else {
 			ranges = nil
@@ -1616,18 +1616,18 @@ func TestServiceDrynxLogisticRegressionBC(t *testing.T) {
 		}
 
 		// DPs signatures for Input Range Validation
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(elServers.List))
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(elServers.List))
 		if ranges != nil && u != int64(0) && l != int64(0) {
 			for i := range elServers.List {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if cuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -1641,7 +1641,7 @@ func TestServiceDrynxLogisticRegressionBC(t *testing.T) {
 		if ranges == nil || (u == int64(0) && l == int64(0)) {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)
@@ -1990,11 +1990,11 @@ func TestServiceDrynxLogisticRegressionGSE(t *testing.T) {
 			}
 		}
 
-		ranges := make([]*[]int64, operation.NbrOutput)
+		ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 		if rangeProofs {
 			for i := range ranges {
-				ranges[i] = &[]int64{u, l}
+				ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 			}
 		} else {
 			ranges = nil
@@ -2010,7 +2010,7 @@ func TestServiceDrynxLogisticRegressionGSE(t *testing.T) {
 		}
 
 		// DPs signatures for Input Range Validation
-		ps := make([]*[]libdrynx.PublishSignatureBytes, len(elServers.List))
+		ps := make([]*libdrynx.PublishSignatureBytesList, len(elServers.List))
 		//var modulo int
 		//if cuttingFactor != 0 {
 		//	modulo = operation.NbrOutput / cuttingFactor
@@ -2020,12 +2020,12 @@ func TestServiceDrynxLogisticRegressionGSE(t *testing.T) {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if cuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[i] = &temp
+				ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 			}
 		} else {
 			ps = nil
@@ -2039,7 +2039,7 @@ func TestServiceDrynxLogisticRegressionGSE(t *testing.T) {
 		if ranges == nil || (u == int64(0) && l == int64(0)) {
 			log.Lvl1("No input range validation")
 		} else {
-			log.Lvl1("with input range validation (", len(ps), " x ", len(*ps[0]), ")")
+			log.Lvl1("with input range validation (", len(ps), " x ", len((*ps[0]).Content), ")")
 		}
 		if libdrynx.AddDiffP(diffP) {
 			log.Lvl1(" with differential privacy with epsilon=", diffP.LapMean, " and delta=", diffP.LapScale)

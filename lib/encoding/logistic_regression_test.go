@@ -690,7 +690,7 @@ func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 	l := int64(10)
 	ps := make([][]libdrynx.PublishSignature, 2)
 
-	ranges := make([]*[]int64, 30)
+	ranges := make([]*libdrynx.Int64List, 30)
 	ps[0] = make([]libdrynx.PublishSignature, 30)
 	ps[1] = make([]libdrynx.PublishSignature, 30)
 	ys := make([][]kyber.Point, 2)
@@ -701,7 +701,7 @@ func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u, l}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 	}
 
 	yss := make([][]kyber.Point, 30)
@@ -717,7 +717,7 @@ func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 	resultEncrypted, _, prf := libdrynxencoding.EncodeLogisticRegressionWithProofs(X, y, lrParameters, pubKey, ps, ranges)
 	result := libdrynxencoding.DecodeLogisticRegression(resultEncrypted, privKey, lrParameters)
 
-	assert.True(t, libdrynxrange.RangeProofVerification(libdrynxrange.CreatePredicateRangeProofForAllServ(prf[0]), (*ranges[0])[0], (*ranges[0])[1], yss[0], pubKey))
+	assert.True(t, libdrynxrange.RangeProofVerification(libdrynxrange.CreatePredicateRangeProofForAllServ(prf[0]), (*ranges[0]).Content[0], (*ranges[0]).Content[1], yss[0], pubKey))
 
 	// no equality because expected weights were computed in clear
 	// todo: consider computed weights using encrypted approx coefficients

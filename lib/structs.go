@@ -143,111 +143,10 @@ type ShufflingBytesMessage struct {
 	Data *[]byte
 }
 
-// ResponseDP contains the data provider's response to be sent to the server.
-type ResponseDP struct {
-	Data map[string]libunlynx.CipherVector // group -> value(s)
-}
-
 //PublishSignature contains points signed with a private key and the public key associated to verify the signatures.
 type PublishSignature struct {
 	Public    kyber.Point   // y
 	Signature []kyber.Point // A_i
-}
-
-//PublishSignatureBytes is the same as PublishSignature but the signatures are in bytes
-type PublishSignatureBytes struct { //need this because of G2 in protobuf not working
-	Public    kyber.Point // y
-	Signature []byte      // A_i
-}
-
-// QueryDiffP contains diffP parameters for a query
-type QueryDiffP struct {
-	LapMean       float64
-	LapScale      float64
-	NoiseListSize int
-	Quanta        float64
-	Scale         float64
-	Limit         float64
-}
-
-// QueryIVSigs contains parameters for input validation
-type QueryIVSigs struct {
-	InputValidationSigs  []*[]PublishSignatureBytes
-	InputValidationSize1 int
-	InputValidationSize2 int
-}
-
-// ColumnID is a reference to a "column" the Loader can extract
-type ColumnID string
-
-// Query is used to transport query information through servers, to DPs
-type Query struct {
-	// query statement
-	Operation   Operation
-	Ranges      []*[]int64
-	Proofs      int
-	Obfuscation bool
-	DiffP       QueryDiffP
-
-	// identity skipchain simulation
-	IVSigs    QueryIVSigs
-	RosterVNs *onet.Roster
-
-	//simulation
-	CuttingFactor int
-
-	// allow to select which column to compute operation on
-	Selector []ColumnID
-}
-
-// Operation defines the operation in the query
-type Operation struct {
-	NameOp       string
-	NbrInput     int
-	NbrOutput    int
-	QueryMin     int64
-	QueryMax     int64
-	LRParameters LogisticRegressionParameters
-}
-
-// LogisticRegressionParameters are the parameters specific to logistic regression
-type LogisticRegressionParameters struct {
-	// logistic regression specific
-	DatasetName        string
-	FilePath           string
-	NbrRecords         int64
-	NbrFeatures        int64
-	Means              []float64
-	StandardDeviations []float64
-
-	// parameters
-	Lambda         float64
-	Step           float64
-	MaxIterations  int
-	InitialWeights []float64
-
-	// approximation
-	K                           int
-	PrecisionApproxCoefficients float64
-}
-
-// SurveyQuery is the complete query
-type SurveyQuery struct {
-	SurveyID      string
-	RosterServers onet.Roster
-	ClientPubKey  kyber.Point
-	IntraMessage  bool // to define whether the query was sent by the querier or not
-	ServerToDP    map[string]*[]network.ServerIdentity
-	// query statement
-	Query Query
-	//map of DP/Server to Public key
-	IDtoPublic map[string]kyber.Point
-	//Threshold for verification in skipChain service
-	Threshold                  float64
-	AggregationProofThreshold  float64
-	ObfuscationProofThreshold  float64
-	RangeProofThreshold        float64
-	KeySwitchingProofThreshold float64
 }
 
 // SurveyQueryToVN is the version of the query sent to the VNs
@@ -428,18 +327,18 @@ func AddDiffP(qdf QueryDiffP) bool {
 	return !(qdf.LapMean == 0.0 && qdf.LapScale == 0.0 && qdf.NoiseListSize == 0 && qdf.Quanta == 0.0 && qdf.Scale == 0 && qdf.Limit == 0)
 }
 
-func checkRangesZeros(ranges []*[]int64) bool {
+func checkRangesZeros(ranges []*Int64List) bool {
 	for _, v := range ranges {
-		if (*v)[0] != int64(0) || (*v)[1] != int64(0) {
+		if (*v).Content[0] != 0 || (*v).Content[1] != 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func checkRangesBits(ranges []*[]int64) bool {
+func checkRangesBits(ranges []*Int64List) bool {
 	for _, v := range ranges {
-		if (*v)[0] != int64(2) || (*v)[1] != int64(1) {
+		if (*v).Content[0] != 2 || (*v).Content[1] != 1 {
 			return false
 		}
 	}
@@ -486,7 +385,7 @@ func CheckParameters(sq SurveyQuery, diffP bool) bool {
 		}
 
 		if sq.Query.IVSigs.InputValidationSigs != nil && sq.Query.Ranges != nil {
-			if sq.Query.Operation.NbrOutput != len(*sq.Query.IVSigs.InputValidationSigs[0]) || sq.Query.Operation.NbrOutput != len(sq.Query.Ranges) {
+			if sq.Query.Operation.NbrOutput != len((*sq.Query.IVSigs.InputValidationSigs[0]).Content) || sq.Query.Operation.NbrOutput != len(sq.Query.Ranges) {
 				result = false
 				message = message + "ranges or signatures length do not match with nbr output \n"
 			}
@@ -537,7 +436,7 @@ func QueryToProofsNbrs(q SurveyQuery) []int {
 
 	for _, v := range q.ServerToDP {
 		if v != nil {
-			nbrDPs = nbrDPs + len(*v)
+			nbrDPs = nbrDPs + len(v.Content)
 		}
 	}
 	nbrServers := len(q.RosterServers.List)

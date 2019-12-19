@@ -24,7 +24,7 @@ type DataToVerify struct {
 }
 
 //CreateRandomGoodTestData only creates valid proofs
-func CreateRandomGoodTestData(roster *onet.Roster, pub kyber.Point, ps []*[]libdrynx.PublishSignatureBytes, ranges []*[]int64, nbrProofs int) DataToVerify {
+func CreateRandomGoodTestData(roster *onet.Roster, pub kyber.Point, ps []*libdrynx.PublishSignatureBytesList, ranges []*libdrynx.Int64List, nbrProofs int) DataToVerify {
 	var secKey = bn256.NewSuiteG1().Scalar().Pick(random.New())
 	var entityPub = bn256.NewSuiteG1().Point().Mul(secKey, bn256.NewSuiteG1().Point().Base())
 	var tab1 = []int64{1, 2, 3, 6}
@@ -92,7 +92,7 @@ func CreateRandomGoodTestData(roster *onet.Roster, pub kyber.Point, ps []*[]libd
 		for i := 0; i < len(roster.List); i++ {
 			signatures[i] = make([]libdrynx.PublishSignature, len(ranges))
 			for j := 0; j < len(ranges); j++ {
-				signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures((*ps[i])[j])
+				signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures((*ps[i]).Content[j])
 			}
 		}
 

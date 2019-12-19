@@ -134,7 +134,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 	operation := libdrynx.Operation{NameOp: sim.OperationName, NbrInput: sim.NbrInput, NbrOutput: sim.NbrOutput, QueryMin: sim.MinData, QueryMax: sim.MaxData, LRParameters: lrParameters}
 
 	// create the ranges for input validation
-	ranges := make([]*[]int64, operation.NbrOutput)
+	ranges := make([]*libdrynx.Int64List, operation.NbrOutput)
 
 	switch sim.Ranges {
 	case -1:
@@ -144,7 +144,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 		for i := range ranges {
 			u := int64(16)
 			l := int64(16)
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 99:
@@ -162,7 +162,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			} else {
 				log.Fatal("You are not running the variance you naughty boy!")
 			}
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 100:
@@ -180,7 +180,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			} else {
 				log.Fatal("You are not running the variance you naughty boy!")
 			}
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 101:
@@ -198,7 +198,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			} else {
 				log.Fatal("You are not running the variance you naughty boy!")
 			}
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 102:
@@ -216,7 +216,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			} else {
 				log.Fatal("You are not running the variance you naughty boy!")
 			}
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 103:
@@ -234,21 +234,21 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			} else {
 				log.Fatal("You are not running the variance you naughty boy!")
 			}
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 1:
 		for i := range ranges {
 			u := int64(2)
 			l := int64(1)
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 0:
 		for i := range ranges {
 			u := int64(0)
 			l := int64(0)
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 17:
@@ -268,26 +268,26 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 				l = int64(1)
 			}*/
 
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 	case 18:
 		for i := range ranges {
 			u := int64(16)
 			l := int64(5)
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	case 19:
 		for i := range ranges {
 			u := int64(4)
 			l := int64(16)
-			ranges[i] = &[]int64{u, l}
+			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
 		break
 	}
 
 	// signatures for Input Validation
-	ps := make([]*[]libdrynx.PublishSignatureBytes, sim.NbrServers)
+	ps := make([]*libdrynx.PublishSignatureBytesList, sim.NbrServers)
 	if !(ranges == nil) && sim.Ranges != 0 {
 		wg := libunlynx.StartParallelize(sim.NbrServers)
 		for i := 0; i < sim.NbrServers; i++ {
@@ -296,12 +296,12 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 				temp := make([]libdrynx.PublishSignatureBytes, len(ranges))
 				for j := 0; j < len(ranges); j++ {
 					if sim.CuttingFactor != 0 {
-						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j])[0])
+						temp[j] = libdrynxrange.InitRangeProofSignatureDeterministic((*ranges[j]).Content[0])
 					} else {
-						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j])[0]) // u is the first elem
+						temp[j] = libdrynxrange.InitRangeProofSignature((*ranges[j]).Content[0]) // u is the first elem
 					}
 				}
-				ps[index] = &temp
+				ps[index] = &libdrynx.PublishSignatureBytesList{Content: temp}
 				log.Lvl1("Finished creating signatures for server", index)
 			}(i)
 		}

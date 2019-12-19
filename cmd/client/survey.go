@@ -173,13 +173,13 @@ func surveyRun(c *cli.Context) error {
 
 	query := libdrynx.Query{
 		Operation:   operation,
-		Ranges:      []*[]int64{}, // range for each output of operation
-		Proofs:      int(0),       // 0 == no proof, 1 == proof, 2 == optimized proof
+		Ranges:      []*libdrynx.Int64List{}, // range for each output of operation
+		Proofs:      int(0),                  // 0 == no proof, 1 == proof, 2 == optimized proof
 		Obfuscation: false,
 		DiffP: libdrynx.QueryDiffP{ // differential privacy
 			LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
 		IVSigs: libdrynx.QueryIVSigs{
-			InputValidationSigs:  make([]*[]libdrynx.PublishSignatureBytes, 0),
+			InputValidationSigs:  make([]*libdrynx.PublishSignatureBytesList, 0),
 			InputValidationSize1: 0,
 			InputValidationSize2: 0,
 		},
@@ -191,20 +191,22 @@ func surveyRun(c *cli.Context) error {
 	_, aggregations, err := client.SendSurveyQuery(libdrynx.SurveyQuery{
 		SurveyID:      *conf.Survey.Name,
 		RosterServers: roster,
-		ServerToDP: map[string]*[]onet_network.ServerIdentity{ // map CN to DPs
-			roster.List[0].String(): &[]onet_network.ServerIdentity{*roster.List[1], *roster.List[2]}},
+		ServerToDP: map[string]*libdrynx.ServerIdentityList{ // map CN to DPs
+			roster.List[0].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[1], *roster.List[2]}},
+			roster.List[1].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[2], *roster.List[0]}},
+			roster.List[2].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[0], *roster.List[1]}}},
 		IDtoPublic: map[string]kyber.Point{ // map CN|DP|VN to pub key
 			roster.List[0].String(): roster.List[0].Public,
 			roster.List[1].String(): roster.List[1].Public,
 			roster.List[2].String(): roster.List[2].Public},
+
+		Query: query,
 
 		Threshold:                  0,
 		AggregationProofThreshold:  0,
 		ObfuscationProofThreshold:  0,
 		RangeProofThreshold:        0,
 		KeySwitchingProofThreshold: 0,
-
-		Query: query,
 	})
 	if err != nil {
 		return err
