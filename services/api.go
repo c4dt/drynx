@@ -62,8 +62,9 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 
 	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: size1, InputValidationSize2: size2}
 	query := libdrynx.Query{
-		Operation: operation,
+		Selector: make([]libdrynx.ColumnID, operation.NbrInput),
 
+		Operation:   operation,
 		Ranges:      ranges,
 		DiffP:       diffP,
 		Proofs:      proofs,

@@ -13,13 +13,24 @@ func EncodeSum(input []int64, pubKey kyber.Point) (*libunlynx.CipherText, []int6
 	return resultEnc, resultClear
 }
 
-// EncodeSumWithProofs computes the sum of query results with the proof of range
-func EncodeSumWithProofs(input []int64, pubKey kyber.Point, sigs []libdrynx.PublishSignature, l int64, u int64) (*libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
-	//sum the local DP's query results
-	sum := int64(0)
+// ExecuteSumOnProvider computes the result to encode.
+func ExecuteSumOnProvider(input []int64) int64 {
+	var sum int64
 	for _, el := range input {
 		sum += el
 	}
+	return sum
+}
+
+// ExecuteSumOnClient computes the result from the aggregated results.
+func ExecuteSumOnClient(agg []int64) int64 {
+	return agg[0]
+}
+
+// EncodeSumWithProofs computes the sum of query results with the proof of range
+func EncodeSumWithProofs(input []int64, pubKey kyber.Point, sigs []libdrynx.PublishSignature, l int64, u int64) (*libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+	sum := ExecuteSumOnProvider(input)
+
 	//encrypt the local DP's query result
 	sumEncrypted, r := libunlynx.EncryptIntGetR(pubKey, sum)
 

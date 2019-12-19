@@ -12,11 +12,7 @@ import (
 )
 
 func TestEncodeDecodeBit(t *testing.T) {
-	//data
-	var inputValues []bool
-	inputValues = append(inputValues, false)
-	inputValues = append(inputValues, true)
-	inputValues = append(inputValues, false)
+	inputValues := []bool{false, true, false}
 
 	// key
 	keys := key.NewKeyPair(libunlynx.SuiTe)
@@ -38,11 +34,7 @@ func TestEncodeDecodeBit(t *testing.T) {
 }
 
 func TestEncodeDecodeBitWithProofs(t *testing.T) {
-	//Data
-	var inputValues []bool
-	inputValues = append(inputValues, false)
-	inputValues = append(inputValues, true)
-	inputValues = append(inputValues, false)
+	inputValues := []bool{false, true, false}
 
 	// key
 	keys := key.NewKeyPair(libunlynx.SuiTe)

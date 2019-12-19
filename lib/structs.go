@@ -1,6 +1,10 @@
 package libdrynx
 
 import (
+	"encoding"
+	"sync"
+	"time"
+
 	"github.com/coreos/bbolt"
 	"github.com/ldsec/unlynx/lib"
 	"github.com/ldsec/unlynx/protocols"
@@ -9,9 +13,28 @@ import (
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
-	"sync"
-	"time"
+	"go.dedis.ch/protobuf"
 )
+
+// ColumnID is a reference to a "column" the Loader can extract
+type ColumnID string
+
+// Operation2 is an statistical operator to be run on the network.
+// TODO from operations/index.go, put it back when migration done
+type Operation2 interface {
+	protobuf.InterfaceMarshaler
+	encoding.BinaryUnmarshaler
+
+	// ExecuteOnProvider takes provided data and computes local result.
+	ExecuteOnProvider([][]float64) ([]float64, error)
+	// ExecuteOnClient takes aggregated result and compute global result.
+	ExecuteOnClient([]float64) ([]float64, error)
+
+	// GetInputSize returns the needed input width.
+	GetInputSize() uint
+	// GetEncodedSize returns the CipherVector width.
+	GetEncodedSize() uint
+}
 
 // QueryInfo is a structure used in the service to store information about a query in the concurrent map.
 // This information helps us to know how many proofs have been received and processed.

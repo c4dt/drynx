@@ -8,14 +8,8 @@ import (
 	"math"
 )
 
-// EncodeCosim computes the elements needed to compute cosine similarity
-func EncodeCosim(rijs, riks []int64, pubKey kyber.Point) ([]libunlynx.CipherText, []int64) {
-	resultEnc, resultClear, _ := EncodeCosimWithProofs(rijs, riks, pubKey, nil, []*[]int64{})
-	return resultEnc, resultClear
-}
-
-// EncodeCosimWithProofs computes the elements needed to compute cosine similarity with the proof of range
-func EncodeCosimWithProofs(rijs, riks []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+// ExecuteCosimOnProvider computes the result to encode, under the cosim operation.
+func ExecuteCosimOnProvider(rijs, riks []int64) []int64 {
 	//sum the rijs
 	rijsSum := int64(0)
 	riksSum := int64(0)
@@ -32,7 +26,24 @@ func EncodeCosimWithProofs(rijs, riks []int64, pubKey kyber.Point, sigs [][]libd
 		rijsXRijksSum = rijsXRijksSum + el*el2
 
 	}
-	resultClear := []int64{rijsSum, riksSum, rijs2Sum, riks2Sum, rijsXRijksSum}
+
+	return []int64{rijsSum, riksSum, rijs2Sum, riks2Sum, rijsXRijksSum}
+}
+
+// ExecuteCosimOnClient computes the result from the aggregated results, under the cosim operation.
+func ExecuteCosimOnClient(aggregated []int64) float64 {
+	return float64(aggregated[4]) / (math.Sqrt(float64(aggregated[2])) * math.Sqrt(float64(aggregated[3])))
+}
+
+// EncodeCosim computes the elements needed to compute cosine similarity
+func EncodeCosim(rijs, riks []int64, pubKey kyber.Point) ([]libunlynx.CipherText, []int64) {
+	resultEnc, resultClear, _ := EncodeCosimWithProofs(rijs, riks, pubKey, nil, []*libdrynx.Int64List{})
+	return resultEnc, resultClear
+}
+
+// EncodeCosimWithProofs computes the elements needed to compute cosine similarity with the proof of range
+func EncodeCosimWithProofs(rijs, riks []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+	resultClear := ExecuteCosimOnProvider(rijs, riks)
 
 	resultEncrypteds := make([]libunlynx.CipherText, len(resultClear))
 	resultRandomRS := make([]kyber.Scalar, len(resultClear))
@@ -79,8 +90,6 @@ func DecodeCosim(result []libunlynx.CipherText, secKey kyber.Scalar) float64 {
 	}
 	libunlynx.EndParallelize(wg)
 
-	cosim := float64(resultsClears[4]) / (math.Sqrt(float64(resultsClears[2])) * math.Sqrt(float64(resultsClears[3])))
-
-	return cosim
+	return ExecuteCosimOnClient(resultsClears)
 
 }
