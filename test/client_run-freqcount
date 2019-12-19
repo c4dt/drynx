@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+. ./lib.sh
+
+cat > providing <<EOF
+column
+1
+2
+3
+EOF
+
+n=$((node_count-1))
+
+start_nodes providing
+
+(
+	client_gen_network
+	client survey new test-run-survey |
+		client survey set-sources column |
+		client survey set-operation --range 0,4 frequencyCount
+) | client survey run |
+	xargs | xargs -d '\n' test "0 $n $n $n 0" ==

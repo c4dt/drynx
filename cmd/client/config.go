@@ -7,6 +7,7 @@ import (
 	onet_network "go.dedis.ch/onet/v3/network"
 
 	"github.com/ldsec/drynx/lib"
+	"github.com/ldsec/drynx/lib/operations"
 
 	"github.com/pelletier/go-toml"
 )
@@ -17,7 +18,7 @@ type configNetwork struct {
 }
 type configSurvey struct {
 	Name      *string
-	Operation *string
+	Operation *operations.Operation
 	Sources   *[]libdrynx.ColumnID
 }
 type config struct {

@@ -4,11 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/urfave/cli"
 
 	"github.com/ldsec/drynx/lib"
+	"github.com/ldsec/drynx/lib/operations"
 	"github.com/ldsec/drynx/services"
+	_ "github.com/ldsec/drynx/services"
 	kyber "go.dedis.ch/kyber/v3"
 	onet "go.dedis.ch/onet/v3"
 	onet_network "go.dedis.ch/onet/v3/network"
@@ -66,16 +70,56 @@ func surveySetOperation(c *cli.Context) error {
 	if len(args) != 1 {
 		return errors.New("need an operation")
 	}
-	operation := args.Get(0)
+	name := args[0]
+
+	var parsedRange *operations.Range
+	if rawRange := c.String("range"); rawRange != "" {
+		splitted := strings.SplitN(rawRange, ",", 2)
+		if len(splitted) != 2 {
+			return errors.New("range should be ','-separated")
+		}
+
+		min, err := strconv.ParseInt(splitted[0], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		max, err := strconv.ParseInt(splitted[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		parsedRange = &operations.Range{Min: min, Max: max}
+	}
 
 	conf, err := readConfigFrom(os.Stdin)
 	if err != nil {
 		return err
 	}
 
-	conf.Survey.Operation = &operation
+	conf.Survey.Operation = &operations.Operation{
+		Name:  name,
+		Range: parsedRange,
+	}
 
 	return conf.writeTo(os.Stdout)
+}
+
+func operationToOperation2(op operations.Operation) (libdrynx.Operation2, error) {
+	switch op.Name {
+	case "frequencyCount":
+		if op.Range == nil {
+			return nil, errors.New("requires a range")
+		}
+		ret, err := operations.NewFrequencyCount(op.Range.Min, op.Range.Max)
+		return &ret, err
+	case "sum":
+		return operations.Sum{}, nil
+	case "cosim":
+		return operations.CosineSimilarity{}, nil
+	}
+
+	return nil, errors.New("unknown operation name")
 }
 
 func surveyRun(c *cli.Context) error {
@@ -113,12 +157,16 @@ func surveyRun(c *cli.Context) error {
 	if conf.Survey.Operation == nil {
 		return errors.New("need a survey operation")
 	}
+	opMin, opMax := 0, 0
+	if opRange := conf.Survey.Operation.Range; opRange != nil {
+		opMin, opMax = int(opRange.Min), int(opRange.Max)
+	}
 	operation := libdrynx.ChooseOperation(
-		*conf.Survey.Operation, // operation
-		len(roster.List),       // min num of DP to query
-		len(roster.List),       // max num of DP to query
-		5,                      // dimension for linear regression
-		0)                      // "cutting factor", how much to remove of gen data[0:#/n]
+		string(conf.Survey.Operation.Name), // operation
+		opMin,                              // lower bound of range
+		opMax,                              // upper bound of range
+		5,                                  // dimension for linear regression
+		0)                                  // "cutting factor", how much to remove of gen data[0:#/n]
 	if operation.NbrInput != len(*conf.Survey.Sources) {
 		return errors.New("Operation can't take #Sources")
 	}
