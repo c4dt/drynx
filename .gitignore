@@ -45,6 +45,7 @@ pre_compute_multiplications.gob
 # built
 /cmd/client/client
 /cmd/server/server
+/cmd/server/server-static
 
 # cloned
 /Coding

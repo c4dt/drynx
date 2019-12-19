@@ -1,5 +1,7 @@
 .DEFAULT_GOAL := all
 
+DOCKER_IMAGE ?= ldsec/drynx:latest
+
 Coding/bin/Makefile.base:
 	git clone https://github.com/dedis/Coding
 include Coding/bin/Makefile.base
@@ -16,5 +18,14 @@ cmd/$1/$1: cmd/$1/*.go $(wildcard */*.go */*/*.go */*/*/*.go)
 endef
 $(foreach c,$(go-cmds),$(eval $(call go-cmd-build,$c)))
 
+.PHONY: cmds
+cmds: $(foreach c,$(go-cmds),cmd/$c/$c)
+
+cmd/server/server-static: cmd/server/*.go $(wildcard */*.go */*/*.go */*/*/*.go)
+	CGO_ENABLED=0 go build -o $@ ./$(<D)
+.PHONY: docker
+docker: cmd/server/server-static
+	docker build -t $(DOCKER_IMAGE) $(<D)
+
 .PHONY: all
-all: $(foreach c,$(go-cmds),cmd/$c/$c)
+all: cmds
