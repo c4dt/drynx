@@ -16,17 +16,20 @@ require (
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tonestuff/quadratic v0.0.0-20141117024252-b79de8af2377
-	github.com/urfave/cli v1.22.1
+	github.com/urfave/cli v1.22.2
 	go.dedis.ch/cothority/v3 v3.3.2
-	go.dedis.ch/kyber/v3 v3.0.8
-	go.dedis.ch/onet/v3 v3.0.26
-	go.dedis.ch/protobuf v1.0.10 // indirect
-	golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf
-	golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c // indirect
-	gonum.org/v1/gonum v0.6.0
+	go.dedis.ch/kyber/v3 v3.0.11
+	go.dedis.ch/kyber/v4 v4.0.0-pre1 // indirect
+	go.dedis.ch/onet/v3 v3.0.31
+	go.dedis.ch/protobuf v1.0.11
+	golang.org/x/crypto v0.0.0-20191202143827-86a70503ff7e
+	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect
+	gonum.org/v1/gonum v0.6.1
 	gopkg.in/satori/go.uuid.v1 v1.2.0
 )
 
 // uncomment when running mininet
 //replace github.com/ldsec/unlynx => ../unlynx
 //replace go.dedis.ch/onet/v3 => ../../../go.dedis.ch/onet
+
+replace go.dedis.ch/kyber/v3 => ../kyber
