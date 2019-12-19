@@ -294,9 +294,17 @@ func TestProofCollectionProtocol(t *testing.T) {
 }
 
 func generateTestSurveyQuery(surveyID string, el *onet.Roster, idToPublic map[string]kyber.Point, ps []*libdrynx.PublishSignatureBytesList, ranges []*libdrynx.Int64List) libdrynx.SurveyQuery {
-	diffP := libdrynx.QueryDiffP{Scale: 1.0, Quanta: 1.0, NoiseListSize: 1, Limit: 1.0, LapMean: 1.0, LapScale: 1.0}
+	if len(ps) != len(el.List) {
+		panic("signatures: bad width")
+	}
+	for _, row := range ps {
+		if len(row.Content) != len(ranges) {
+			panic("signatures: range mismatch")
+		}
+	}
 
-	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: len(el.List), InputValidationSize2: len(ranges)}
+	diffP := libdrynx.QueryDiffP{Scale: 1.0, Quanta: 1.0, NoiseListSize: 1, Limit: 1.0, LapMean: 1.0, LapScale: 1.0}
+	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps}
 	query := libdrynx.Query{DiffP: diffP, Operation: libdrynx.Operation{NbrInput: 1, NbrOutput: 1}, Ranges: ranges, IVSigs: iVSigs, Proofs: 1}
 	sq := libdrynx.SurveyQuery{RosterServers: *el, SurveyID: surveyID, Query: query, ClientPubKey: nil, ServerToDP: nil, IDtoPublic: idToPublic, Threshold: 1.0, AggregationProofThreshold: 1.0, RangeProofThreshold: 1.0, ObfuscationProofThreshold: 1.0, KeySwitchingProofThreshold: 1.0}
 

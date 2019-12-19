@@ -195,8 +195,6 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 
 	info("received a [SurveyQuery]")
 
-	recq.Query.IVSigs.InputValidationSigs = recreateRangeSignatures(recq.Query.IVSigs)
-
 	// get the total number DPs
 	nbrDPs := 0
 	for _, v := range recq.ServerToDP {
@@ -857,25 +855,4 @@ func generateDataCollectionRoster(root *network.ServerIdentity, serverToDP map[s
 	}
 
 	return nil
-}
-
-func recreateRangeSignatures(ivSigs libdrynx.QueryIVSigs) []*libdrynx.PublishSignatureBytesList {
-	recreate := make([]*libdrynx.PublishSignatureBytesList, 0)
-
-	// transform the one-dimensional array (because of protobuf) to the original two-dimensional array
-	indexInit := 0
-	for i := 1; i <= len(ivSigs.InputValidationSigs); i++ {
-		if i%ivSigs.InputValidationSize2 == 0 {
-			tmp := make([]libdrynx.PublishSignatureBytes, ivSigs.InputValidationSize2)
-			for j := range tmp {
-				tmp[j] = (*ivSigs.InputValidationSigs[indexInit]).Content[0]
-				indexInit++
-			}
-			recreate = append(recreate, &libdrynx.PublishSignatureBytesList{Content: tmp})
-
-			indexInit = i
-		}
-
-	}
-	return recreate
 }

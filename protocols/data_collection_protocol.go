@@ -186,11 +186,11 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	}
 	mutexGroups.Unlock()
 	// read the signatures needed to compute the range proofs
-	signatures := make([][]libdrynx.PublishSignature, p.Survey.Query.IVSigs.InputValidationSize1)
-	for i := 0; i < p.Survey.Query.IVSigs.InputValidationSize1; i++ {
-		signatures[i] = make([]libdrynx.PublishSignature, p.Survey.Query.IVSigs.InputValidationSize2)
-		for j := 0; j < p.Survey.Query.IVSigs.InputValidationSize2; j++ {
-			signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures((*p.Survey.Query.IVSigs.InputValidationSigs[i]).Content[j])
+	signatures := make([][]libdrynx.PublishSignature, len(p.Survey.Query.IVSigs.InputValidationSigs))
+	for i, row := range p.Survey.Query.IVSigs.InputValidationSigs {
+		signatures[i] = make([]libdrynx.PublishSignature, len((*row).Content))
+		for j, v := range (*row).Content {
+			signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures(v)
 		}
 	}
 
