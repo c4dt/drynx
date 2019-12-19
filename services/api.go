@@ -53,14 +53,7 @@ func NewDrynxClient(entryPoint *network.ServerIdentity, clientID string) *API {
 
 // GenerateSurveyQuery generates a query with all the information in parameters
 func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToServer map[string]*[]network.ServerIdentity, idToPublic map[string]kyber.Point, surveyID string, operation libdrynx.Operation, ranges []*libdrynx.Int64List, ps []*libdrynx.PublishSignatureBytesList, proofs int, obfuscation bool, thresholds []float64, diffP libdrynx.QueryDiffP, cuttingFactor int) libdrynx.SurveyQuery {
-	size1 := 0
-	size2 := 0
-	if ps != nil {
-		size1 = len(ps)
-		size2 = len((*ps[0]).Content)
-	}
-
-	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: size1, InputValidationSize2: size2}
+	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps}
 	query := libdrynx.Query{
 		Selector: make([]libdrynx.ColumnID, operation.NbrInput),
 

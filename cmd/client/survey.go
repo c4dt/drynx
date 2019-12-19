@@ -180,9 +180,7 @@ func surveyRun(c *cli.Context) error {
 		DiffP: libdrynx.QueryDiffP{ // differential privacy
 			LapMean: 0.0, LapScale: 0.0, NoiseListSize: 0, Quanta: 0.0, Scale: 0},
 		IVSigs: libdrynx.QueryIVSigs{
-			InputValidationSigs:  make([]*libdrynx.PublishSignatureBytesList, 0),
-			InputValidationSize1: 0,
-			InputValidationSize2: 0,
+			InputValidationSigs: make([]*libdrynx.PublishSignatureBytesList, 0),
 		},
 		RosterVNs:     &roster,
 		CuttingFactor: 0,

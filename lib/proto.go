@@ -121,10 +121,6 @@ type PublishSignatureBytesList struct {
 type QueryIVSigs struct {
 	// optional
 	InputValidationSigs []*PublishSignatureBytesList
-	// optional
-	InputValidationSize1 int
-	// optional
-	InputValidationSize2 int
 }
 
 // Int64List wraps []int64.
