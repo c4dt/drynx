@@ -481,7 +481,7 @@ func CreatePredicateRangeProof(sig libdrynx.PublishSignature, u int64, l int64, 
 }
 
 //RangeProofListVerification verifies a list of range proofs
-func RangeProofListVerification(rangeProofsList RangeProofList, ranges []*[]int64, psb []*[]libdrynx.PublishSignatureBytes, P kyber.Point, verifThresold float64) bool {
+func RangeProofListVerification(rangeProofsList RangeProofList, ranges []*libdrynx.Int64List, psb []*libdrynx.PublishSignatureBytesList, P kyber.Point, verifThresold float64) bool {
 	result := true
 	nbrVerifs := int(math.Ceil(verifThresold * float64(len(rangeProofsList.Data))))
 	wg := libunlynx.StartParallelize(nbrVerifs)
@@ -490,7 +490,7 @@ func RangeProofListVerification(rangeProofsList RangeProofList, ranges []*[]int6
 	for i := 0; i < nbrVerifs; i++ {
 		go func(i int) {
 			defer wg.Done()
-			allRes[i] = RangeProofVerification(rangeProofsList.Data[i], (*ranges[i])[0], (*ranges[i])[1], ReadColumnYs(psb, i), P)
+			allRes[i] = RangeProofVerification(rangeProofsList.Data[i], (*ranges[i]).Content[0], (*ranges[i]).Content[1], ReadColumnYs(psb, i), P)
 		}(i)
 	}
 	libunlynx.EndParallelize(wg)
@@ -612,10 +612,10 @@ func ReadColumnWithYs(sigs [][]libdrynx.PublishSignature, column int) ([]libdryn
 }
 
 //ReadColumnYs reads Y parts of a column of signatures
-func ReadColumnYs(sigs []*[]libdrynx.PublishSignatureBytes, column int) []kyber.Point {
+func ReadColumnYs(sigs []*libdrynx.PublishSignatureBytesList, column int) []kyber.Point {
 	sigiY := make([]kyber.Point, len(sigs))
 	for j := range sigs {
-		sigiY[j] = (*sigs[j])[column].Public
+		sigiY[j] = (*sigs[j]).Content[column].Public
 	}
 	return sigiY
 }

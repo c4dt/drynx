@@ -51,7 +51,7 @@ func TestEncodeDecodeMeanWithProofs(t *testing.T) {
 
 	ps := make([][]libdrynx.PublishSignature, 2)
 
-	ranges := make([]*[]int64, 2)
+	ranges := make([]*libdrynx.Int64List, 2)
 	ps[0] = make([]libdrynx.PublishSignature, 2)
 	ps[1] = make([]libdrynx.PublishSignature, 2)
 	ys := make([][]kyber.Point, 2)
@@ -62,7 +62,7 @@ func TestEncodeDecodeMeanWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u[i]))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u[i], l[i]}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u[i], l[i]}}
 	}
 
 	yss := make([][]kyber.Point, 2)

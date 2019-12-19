@@ -172,7 +172,6 @@ func (p *DataCollectionProtocol) Dispatch() error {
 
 // GenerateData is used to generate data at DPs, this is more for simulation's purposes
 func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
-
 	// Prepare the generation of all possible groups with the query information.
 	numType := []int64{1}
 	mutexGroups.Lock()
@@ -191,7 +190,7 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	for i := 0; i < p.Survey.Query.IVSigs.InputValidationSize1; i++ {
 		signatures[i] = make([]libdrynx.PublishSignature, p.Survey.Query.IVSigs.InputValidationSize2)
 		for j := 0; j < p.Survey.Query.IVSigs.InputValidationSize2; j++ {
-			signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures((*p.Survey.Query.IVSigs.InputValidationSigs[i])[j])
+			signatures[i][j] = libdrynxrange.PublishSignatureBytesToPublishSignatures((*p.Survey.Query.IVSigs.InputValidationSigs[i]).Content[j])
 		}
 	}
 
@@ -249,11 +248,12 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 
 	// compute response
 	queryResponse := make(map[string]libunlynx.CipherVector, 0)
-	clearResponse := make([]int64, 0)
-	encryptedResponse := make([]libunlynx.CipherText, 0)
 
 	// for all different groups
 	for _, v := range groupsString {
+		var clearResponse []int64
+		var encryptedResponse []libunlynx.CipherText
+
 		if p.Survey.Query.CuttingFactor != 0 {
 			p.Survey.Query.Operation.NbrOutput = int(p.Survey.Query.Operation.NbrOutput / p.Survey.Query.CuttingFactor)
 		}

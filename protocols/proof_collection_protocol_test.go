@@ -75,18 +75,18 @@ func TestProofCollectionProtocol(t *testing.T) {
 	idToPublic[senderID] = pub
 
 	// generate query
-	ps := make([]*[]libdrynx.PublishSignatureBytes, len(el.List))
+	ps := make([]*libdrynx.PublishSignatureBytesList, len(el.List))
 	for i := range el.List {
 		temp := make([]libdrynx.PublishSignatureBytes, nbrProofs)
 		for j := 0; j < 2; j++ {
 			temp[j] = libdrynxrange.InitRangeProofSignature(16) // u is the first elem
 		}
-		ps[i] = &temp
+		ps[i] = &libdrynx.PublishSignatureBytesList{Content: temp}
 	}
 	// two range proofs
-	ranges := make([]*[]int64, nbrProofs)
+	ranges := make([]*libdrynx.Int64List, nbrProofs)
 	for i := range ranges {
-		ranges[i] = &[]int64{16, 16}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{16, 16}}
 	}
 	testSQ = generateTestSurveyQuery(surveyID, el, idToPublic, ps, ranges)
 
@@ -293,7 +293,7 @@ func TestProofCollectionProtocol(t *testing.T) {
 	}
 }
 
-func generateTestSurveyQuery(surveyID string, el *onet.Roster, idToPublic map[string]kyber.Point, ps []*[]libdrynx.PublishSignatureBytes, ranges []*[]int64) libdrynx.SurveyQuery {
+func generateTestSurveyQuery(surveyID string, el *onet.Roster, idToPublic map[string]kyber.Point, ps []*libdrynx.PublishSignatureBytesList, ranges []*libdrynx.Int64List) libdrynx.SurveyQuery {
 	diffP := libdrynx.QueryDiffP{Scale: 1.0, Quanta: 1.0, NoiseListSize: 1, Limit: 1.0, LapMean: 1.0, LapScale: 1.0}
 
 	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: len(el.List), InputValidationSize2: len(ranges)}

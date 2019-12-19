@@ -8,11 +8,20 @@ import (
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	onet_network "go.dedis.ch/onet/v3/network"
+	"go.dedis.ch/protobuf"
 
 	"github.com/ldsec/drynx/lib"
+	"github.com/ldsec/drynx/lib/operations"
 	"github.com/ldsec/drynx/lib/provider"
 	"github.com/ldsec/drynx/protocols"
 )
+
+func init() {
+	protobuf.RegisterInterface(func() interface{} { return &operations.Sum{} })
+	protobuf.RegisterInterface(func() interface{} { return &operations.Mean{} })
+	protobuf.RegisterInterface(func() interface{} { return &operations.CosineSimilarity{} })
+	protobuf.RegisterInterface(func() interface{} { return &operations.FrequencyCount{} })
+}
 
 type builderDataProvider struct {
 	loader provider.Loader
@@ -48,11 +57,16 @@ func (b Builder) WithComputingNode() Builder {
 	onet_network.RegisterMessage(&libdrynx.GetBlock{})
 	onet_network.RegisterMessage(&libdrynx.GetProofs{})
 	onet_network.RegisterMessage(&libdrynx.CloseDB{})
+
 	return b
 }
 
 // WithDataProvider add support for running as a Data Provider.
 func (b Builder) WithDataProvider(loader provider.Loader) Builder {
+	if loader == nil {
+		panic("WithDataProvider: loader == nil")
+	}
+
 	onet_network.RegisterMessage(protocols.AnnouncementDCMessage{})
 	onet_network.RegisterMessage(protocols.DataCollectionMessage{})
 
@@ -79,6 +93,9 @@ func (b Builder) Start() {
 	}
 
 	_, err := onet.RegisterNewService(ServiceName, func(c *onet.Context) (onet.Service, error) {
+		if loader == nil {
+			panic("loader == nil")
+		}
 		newDrynxInstance := &ServiceDrynx{
 			ServiceProcessor: onet.NewServiceProcessor(c),
 			Survey:           concurrent.NewConcurrentMap(),

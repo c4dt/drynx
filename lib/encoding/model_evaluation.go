@@ -14,7 +14,7 @@ func EncodeModelEvaluation(inputY []int64, inputPreds []int64, pubKey kyber.Poin
 }
 
 // EncodeModelEvaluationWithProofs encodes the R-score statistic at data providers with range proofs
-func EncodeModelEvaluationWithProofs(inputY []int64, inputPreds []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, ranges []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeModelEvaluationWithProofs(inputY []int64, inputPreds []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, ranges []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 	//inputY is the list of true y values
 	//inputPreds is the list of predictions
 
@@ -70,7 +70,7 @@ func EncodeModelEvaluationWithProofs(inputY []int64, inputPreds []int64, pubKey 
 		go func(i int, v int64) {
 			defer wg.Done()
 			//input range validation proof
-			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, int(i)), U: (*ranges[i])[0], L: (*ranges[i])[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: ciphertextTuples[i]}
+			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, int(i)), U: (*ranges[i]).Content[0], L: (*ranges[i]).Content[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: ciphertextTuples[i]}
 		}(i, v)
 	}
 	libunlynx.EndParallelize(wg)

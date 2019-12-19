@@ -78,7 +78,7 @@ func TestEncodeDecodeMinMaxWithProofs(t *testing.T) {
 
 	ps := make([][]libdrynx.PublishSignature, 2)
 
-	ranges := make([]*[]int64, globalMax-globalMin+1)
+	ranges := make([]*libdrynx.Int64List, globalMax-globalMin+1)
 	ps[0] = make([]libdrynx.PublishSignature, globalMax-globalMin+1)
 	ps[1] = make([]libdrynx.PublishSignature, globalMax-globalMin+1)
 	ys := make([][]kyber.Point, 2)
@@ -89,7 +89,7 @@ func TestEncodeDecodeMinMaxWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u, l}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 	}
 
 	yss := make([][]kyber.Point, globalMax-globalMin+1)

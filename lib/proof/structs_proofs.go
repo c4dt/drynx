@@ -155,7 +155,7 @@ func (rpr *RangeProofRequest) VerifyProof(source network.ServerIdentity, sq libd
 	return verif, err
 }
 
-func verifyRangeProofList(data []byte, sample float64, ranges []*[]int64, psb []*[]libdrynx.PublishSignatureBytes, p kyber.Point, verifThresold float64) int64 {
+func verifyRangeProofList(data []byte, sample float64, ranges []*libdrynx.Int64List, psb []*libdrynx.PublishSignatureBytesList, p kyber.Point, verifThresold float64) int64 {
 	bmInt := proofReceived
 	rando := rand.Float64()
 	if rando <= sample {

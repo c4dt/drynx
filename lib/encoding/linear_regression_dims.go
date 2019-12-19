@@ -20,7 +20,7 @@ func EncodeLinearRegressionDims(input1 [][]int64, input2 []int64, pubKey kyber.P
 }
 
 //EncodeLinearRegressionDimsWithProofs implements a d-dimensional linear regression algorithm on the query results with range proofs
-func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 	//sum the Xs and their squares, the Ys and the product of every pair of X and Y
 	sumXj := int64(0)
 	sumY := int64(0)
@@ -98,7 +98,7 @@ func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubK
 		go func(i int, v int64) {
 			defer wg.Done()
 			//input range validation proof
-			createProofs[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i])[0], L: (*lu[i])[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: CiphertextTuple[i]}
+			createProofs[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i]).Content[0], L: (*lu[i]).Content[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: CiphertextTuple[i]}
 		}(i, v)
 	}
 	libunlynx.EndParallelize(wg)

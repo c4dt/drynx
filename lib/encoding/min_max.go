@@ -10,7 +10,7 @@ import (
 //Note: min and max are such that all values are in the range [min, max], i.e. max (min) is the largest (smallest) possible value the attribute in question can take
 
 //EncodeMinWithProofs encodes the local min
-func EncodeMinWithProofs(input []int64, max int64, min int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeMinWithProofs(input []int64, max int64, min int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 	//compute the local min
 	localMin := input[0]
 	for _, v := range input {
@@ -33,7 +33,7 @@ func EncodeMinWithProofs(input []int64, max int64, min int64, pubKey kyber.Point
 			}
 			tmp := &libunlynx.CipherText{}
 			if sigs != nil {
-				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitOrWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min])[1], (*lu[i-min])[0])
+				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitOrWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min]).Content[1], (*lu[i-min]).Content[0])
 			} else {
 				tmp, cleartextTuples[i-min] = EncodeBitOr(val, pubKey)
 			}
@@ -84,7 +84,7 @@ func EncodeMax(input []int64, max int64, min int64, pubKey kyber.Point) ([]libun
 }
 
 //EncodeMaxWithProofs encodes the local max
-func EncodeMaxWithProofs(input []int64, max int64, min int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeMaxWithProofs(input []int64, max int64, min int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 	//compute the local max
 	localMax := input[0]
 	for _, v := range input {
@@ -107,7 +107,7 @@ func EncodeMaxWithProofs(input []int64, max int64, min int64, pubKey kyber.Point
 			}
 			tmp := &libunlynx.CipherText{}
 			if sigs != nil {
-				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitANDWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min])[1], (*lu[i-min])[0])
+				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitANDWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min]).Content[1], (*lu[i-min]).Content[0])
 			} else {
 				tmp, cleartextTuples[i-min] = EncodeBitAND(val, pubKey)
 			}

@@ -14,7 +14,7 @@ func EncodeMean(input []int64, pubKey kyber.Point) ([]libunlynx.CipherText, []in
 }
 
 // EncodeMeanWithProofs computes the mean of query results with the proof of range
-func EncodeMeanWithProofs(input []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeMeanWithProofs(input []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 	//sum the local DP's query results
 	sum := int64(0)
 	for _, el := range input {
@@ -48,7 +48,7 @@ func EncodeMeanWithProofs(input []int64, pubKey kyber.Point, sigs [][]libdrynx.P
 		go func(i int, v int64) {
 			defer wg1.Done()
 			//input range validation proof
-			createProofs[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i])[0], L: (*lu[i])[1], Secret: v, R: resultRandomR[i], CaPub: pubKey, Cipher: resultEncrypted[i]}
+			createProofs[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i]).Content[0], L: (*lu[i]).Content[1], Secret: v, R: resultRandomR[i], CaPub: pubKey, Cipher: resultEncrypted[i]}
 		}(i, v)
 	}
 	libunlynx.EndParallelize(wg1)

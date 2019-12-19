@@ -116,7 +116,7 @@ type CipherAndRandom struct {
 }
 
 // EncodeLogisticRegressionWithProofs computes and encrypts the data provider's coefficients for logistic regression with range proofs
-func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 
 	d := lrParameters.NbrFeatures
 	n := getTotalNumberApproxCoefficients(d, lrParameters.K)
@@ -194,7 +194,7 @@ func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrPara
 		go func(i int, v int64) {
 			defer wg1.Done()
 			//input range validation proof
-			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i])[0], L: (*lu[i])[1], Secret: v, R: encryptedAggregatedApproxCoefficients[i].r, CaPub: pubKey, Cipher: encryptedAggregatedApproxCoefficients[i].C}
+			createRangeProof[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i]).Content[0], L: (*lu[i]).Content[1], Secret: v, R: encryptedAggregatedApproxCoefficients[i].r, CaPub: pubKey, Cipher: encryptedAggregatedApproxCoefficients[i].C}
 		}(i, v)
 	}
 	libunlynx.EndParallelize(wg1)

@@ -76,7 +76,7 @@ func TestEncodeDecodeModelEvaluationWithProofs(t *testing.T) {
 	l := []int64{8, 12, 12, 12}
 
 	ps := make([][]libdrynx.PublishSignature, 2)
-	ranges := make([]*[]int64, 4)
+	ranges := make([]*libdrynx.Int64List, 4)
 	ps[0] = make([]libdrynx.PublishSignature, 4)
 	ps[1] = make([]libdrynx.PublishSignature, 4)
 	ys := make([][]kyber.Point, 2)
@@ -87,7 +87,7 @@ func TestEncodeDecodeModelEvaluationWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u[i]))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u[i], l[i]}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u[i], l[i]}}
 	}
 
 	yss := make([][]kyber.Point, 4)

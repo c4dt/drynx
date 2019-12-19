@@ -1,6 +1,8 @@
 package services
 
 import (
+	"errors"
+
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/protocols"
 	"go.dedis.ch/onet/v3"
@@ -13,8 +15,8 @@ import (
 
 // HandleSurveyQueryToDP handles the reception of a query at a DP
 func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (network.Message, error) {
-
 	recq.SQ.Query.IVSigs.InputValidationSigs = recreateRangeSignatures(recq.SQ.Query.IVSigs)
+
 	// only generate ProofCollection protocol instances if proofs is enabled
 	var mapPIs map[string]onet.ProtocolInstance
 	if recq.SQ.Query.Proofs != 0 {
@@ -47,7 +49,11 @@ func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (ne
 
 func (s *ServiceDrynx) generateRangePI(query *libdrynx.SurveyQueryToDP) (map[string]onet.ProtocolInstance, error) {
 	mapPIs := make(map[string]onet.ProtocolInstance)
-	for _, dp := range *query.SQ.ServerToDP[query.Root.String()] {
+	forUs := query.SQ.ServerToDP[query.Root.String()]
+	if forUs == nil {
+		return nil, errors.New("nothing for us")
+	}
+	for _, dp := range forUs.Content {
 		if dp.String() == s.ServerIdentity().String() {
 			tree := generateProofCollectionRoster(&dp, query.SQ.Query.RosterVNs).GenerateStar()
 

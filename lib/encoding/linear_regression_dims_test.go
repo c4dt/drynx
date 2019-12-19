@@ -238,7 +238,7 @@ func TestEncodeDecodeLinearRegressionDimsWithProofs(t *testing.T) {
 		u[i] = 2
 		l2[i] = 8
 	}
-	ranges := make([]*[]int64, lenCiphertext)
+	ranges := make([]*libdrynx.Int64List, lenCiphertext)
 	ps := make([][]libdrynx.PublishSignature, 2)
 	ps[0] = make([]libdrynx.PublishSignature, lenCiphertext)
 	ps[1] = make([]libdrynx.PublishSignature, lenCiphertext)
@@ -250,7 +250,7 @@ func TestEncodeDecodeLinearRegressionDimsWithProofs(t *testing.T) {
 		ps[1][i] = libdrynxrange.PublishSignatureBytesToPublishSignatures(libdrynxrange.InitRangeProofSignature(u[i]))
 		ys[0][i] = ps[0][i].Public
 		ys[1][i] = ps[1][i].Public
-		ranges[i] = &[]int64{u[i], l2[i]}
+		ranges[i] = &libdrynx.Int64List{Content: []int64{u[i], l2[i]}}
 	}
 
 	yss := make([][]kyber.Point, lenCiphertext)

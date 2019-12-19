@@ -52,12 +52,12 @@ func NewDrynxClient(entryPoint *network.ServerIdentity, clientID string) *API {
 //______________________________________________________________________________________________________________________
 
 // GenerateSurveyQuery generates a query with all the information in parameters
-func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToServer map[string]*[]network.ServerIdentity, idToPublic map[string]kyber.Point, surveyID string, operation libdrynx.Operation, ranges []*[]int64, ps []*[]libdrynx.PublishSignatureBytes, proofs int, obfuscation bool, thresholds []float64, diffP libdrynx.QueryDiffP, cuttingFactor int) libdrynx.SurveyQuery {
+func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToServer map[string]*[]network.ServerIdentity, idToPublic map[string]kyber.Point, surveyID string, operation libdrynx.Operation, ranges []*libdrynx.Int64List, ps []*libdrynx.PublishSignatureBytesList, proofs int, obfuscation bool, thresholds []float64, diffP libdrynx.QueryDiffP, cuttingFactor int) libdrynx.SurveyQuery {
 	size1 := 0
 	size2 := 0
 	if ps != nil {
 		size1 = len(ps)
-		size2 = len(*ps[0])
+		size2 = len((*ps[0]).Content)
 	}
 
 	iVSigs := libdrynx.QueryIVSigs{InputValidationSigs: ps, InputValidationSize1: size1, InputValidationSize2: size2}
@@ -76,12 +76,18 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 		CuttingFactor: cuttingFactor,
 	}
 
-	//create the query
-	sq := libdrynx.SurveyQuery{
+	CNsToDPs := make(map[string]*libdrynx.ServerIdentityList)
+	for cn, dps := range dpToServer {
+		if dps != nil {
+			CNsToDPs[cn] = &libdrynx.ServerIdentityList{Content: *dps}
+		}
+	}
+
+	return libdrynx.SurveyQuery{
 		SurveyID:                   surveyID,
 		RosterServers:              *rosterServers,
 		IntraMessage:               false,
-		ServerToDP:                 dpToServer,
+		ServerToDP:                 CNsToDPs,
 		IDtoPublic:                 idToPublic,
 		Threshold:                  thresholds[0],
 		AggregationProofThreshold:  thresholds[1],
@@ -91,7 +97,6 @@ func (c *API) GenerateSurveyQuery(rosterServers, rosterVNs *onet.Roster, dpToSer
 
 		Query: query,
 	}
-	return sq
 }
 
 // SendSurveyQuery creates a survey based on a set of entities (servers) and a survey description.
@@ -119,9 +124,12 @@ func (c *API) SendSurveyQuery(sq libdrynx.SurveyQuery) (*[]string, *[][]float64,
 	aggr := make([][]float64, len(sr.Data))
 	count := 0
 	for i, res := range sr.Data {
+		vec := make(libunlynx.CipherVector, len(res.Content))
+		for j, e := range res.Content {
+			vec[j] = libunlynx.CipherText{K: e.K, C: e.C}
+		}
 		grp[count] = i
-		aggr[count] = libdrynxencoding.Decode(res, c.private, sq.Query.Operation)
-		count++
+		aggr[count] = libdrynxencoding.Decode(vec, c.private, sq.Query.Operation)
 	}
 	libunlynx.EndTimer(clientDecode)
 
