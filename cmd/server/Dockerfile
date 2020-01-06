@@ -1,8 +1,5 @@
-FROM scratch
+FROM alpine:latest
 
 COPY ./server-static /server
-
-# as no other directory exists
-ENV TMPDIR=/
 
 ENTRYPOINT ["/server"]
