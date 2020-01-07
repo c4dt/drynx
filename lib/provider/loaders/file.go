@@ -67,9 +67,12 @@ func (f fileLoader) Provide(query libdrynx.Query) ([][]float64, error) {
 	for i, index := range selectorIndexes {
 		arr := make([]float64, len(records))
 		for j, r := range records {
-			arr[j], err = strconv.ParseFloat(r[index], 64)
-			if err != nil {
-				return nil, err
+			// TODO default value is zero then, which might be incorrect
+			if (r[index] != "") {
+				arr[j], err = strconv.ParseFloat(r[index], 64)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		ret[i] = arr
