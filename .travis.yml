@@ -7,9 +7,8 @@ env:
   DOCKER_USERNAME: c4dtbot
   DOCKER_IMAGE: c4dt/drynx:latest
 
-before_install: make test_lint test_fmt
 install: go get -t ./...
-script: make docker test_goveralls
+script: make docker
 deploy:
   provider: script
   script: >-

@@ -841,7 +841,9 @@ func convertFromKeySwitchingStruct(cv libunlynx.CipherVector, dpResponses libdry
 }
 
 func generateDataCollectionRoster(root *network.ServerIdentity, serverToDP map[string]*[]network.ServerIdentity) *onet.Roster {
+	println("generateDataCollectionRoster >> ", root.String())
 	for key, value := range serverToDP {
+		println("generateDataCollectionRoster :: ", key)
 		if key == root.String() {
 			roster := make([]*network.ServerIdentity, 0)
 			roster = append(roster, root)
