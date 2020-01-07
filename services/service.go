@@ -849,7 +849,7 @@ func generateDataCollectionRoster(root *network.ServerIdentity, serverToDP map[s
 			roster = append(roster, root)
 
 			for _, srv := range *value {
-				println("generateDataCollectionRoster $$", srv)
+				println("generateDataCollectionRoster $$", srv.String())
 				tmp := srv
 				roster = append(roster, &tmp)
 			}
