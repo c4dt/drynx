@@ -19,7 +19,7 @@ func main() {
 	if you want to generate a network config, use something like
 		%[1]s network new |
 			%[1]s network add-node 1.drynx.c4dt.org 1234abc |
-			%[1]s network set-client 2.drynx.c4dt.org 5678def >
+			%[1]s network set-client 2.drynx.c4dt.org >
 			$my_network_config
 	if you want to generate a survey config, use something like
 		%[1]s survey new my-survey |
@@ -28,7 +28,7 @@ func main() {
 			$my_survey_config
 	then, you can launch a given survey on a given network
 		cat $my_network_config $my_survey_config |
-			%[1]s survey new run
+			%[1]s survey run
 	`, "\t", "   ", -1)), os.Args[0])
 
 	app.Commands = []cli.Command{{
