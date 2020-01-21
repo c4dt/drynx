@@ -1,8 +1,6 @@
 package operations
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 
 	"github.com/ldsec/drynx/lib/encoding"
@@ -11,7 +9,7 @@ import (
 const fcInputSize = 1
 
 // FrequencyCount computes the sum of occurence of values in a column.
-type FrequencyCount struct{ min, max int64 }
+type FrequencyCount struct{ Range }
 
 // MarshalID is the Operation's ID.
 func (FrequencyCount) MarshalID() [8]byte {
@@ -20,36 +18,12 @@ func (FrequencyCount) MarshalID() [8]byte {
 	return ret
 }
 
-// MarshalBinary serialise the instance into []byte.
-func (fc FrequencyCount) MarshalBinary() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-	if err := binary.Write(buffer, binary.BigEndian, fc.min); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buffer, binary.BigEndian, fc.max); err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
-}
-
-// UnmarshalBinary deserialise []byte, as given by MarshalBinary, into the instance.
-func (fc *FrequencyCount) UnmarshalBinary(buf []byte) error {
-	buffer := bytes.NewBuffer(buf)
-	if err := binary.Read(buffer, binary.BigEndian, &fc.min); err != nil {
-		return err
-	}
-	if err := binary.Read(buffer, binary.BigEndian, &fc.max); err != nil {
-		return err
-	}
-	return nil
-}
-
 // NewFrequencyCount creates a new FrequencyCount bound to the given range.
 func NewFrequencyCount(min, max int64) (FrequencyCount, error) {
 	if min > max {
 		return FrequencyCount{}, errors.New("given minimum is greater than maximum")
 	}
-	return FrequencyCount{min, max}, nil
+	return FrequencyCount{Range{min, max}}, nil
 }
 
 // ExecuteOnProvider encodes.
@@ -79,11 +53,6 @@ func (fc FrequencyCount) ExecuteOnClient(aggregated []float64) ([]float64, error
 		ret[i] = float64(v)
 	}
 	return ret, nil
-}
-
-// GetMinMax returns the given min and max.
-func (fc FrequencyCount) GetMinMax() (int64, int64) {
-	return fc.min, fc.max
 }
 
 // GetInputSize returns 1.

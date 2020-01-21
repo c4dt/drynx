@@ -18,7 +18,7 @@ type Mean struct{}
 // MarshalID is the Operation's ID.
 func (Mean) MarshalID() [8]byte {
 	ret := [8]byte{}
-	copy(ret[:], []byte("dr.op.m"))
+	copy(ret[:], []byte("dr.op.me"))
 	return ret
 }
 

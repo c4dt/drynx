@@ -15,7 +15,7 @@ type Sum struct{}
 // MarshalID is the Operation's ID.
 func (Sum) MarshalID() [8]byte {
 	ret := [8]byte{}
-	copy(ret[:], []byte("dr.op.s"))
+	copy(ret[:], []byte("dr.op.su"))
 	return ret
 }
 
