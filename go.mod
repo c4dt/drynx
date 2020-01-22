@@ -5,6 +5,9 @@ go 1.12
 // fix ID discrepancies between typescript and golang
 replace go.dedis.ch/kyber/v3 => go.dedis.ch/kyber/v3 v3.0.12-0.20191209094922-c336cade8388
 
+// fix clean build
+replace go.dedis.ch/cothority/v3 => go.dedis.ch/cothority/v3 v3.4.1-0.20200122095111-c47a28d41429
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/alex-ant/gomath v0.0.0-20160516115720-89013a210a82
@@ -22,7 +25,7 @@ require (
 	go.dedis.ch/kyber/v3 v3.0.11
 	go.dedis.ch/onet/v3 v3.0.31
 	go.dedis.ch/protobuf v1.0.11
-	golang.org/x/crypto v0.0.0-20191219195013-becbf705a915
-	gonum.org/v1/gonum v0.6.1
+	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad
+	gonum.org/v1/gonum v0.6.2
 	gopkg.in/satori/go.uuid.v1 v1.2.0
 )
