@@ -12,12 +12,16 @@ import (
 	"github.com/pelletier/go-toml"
 )
 
+type configDataProviderNeutralizerMinResultsSize struct {
+	MinimumResultsSize uint
+}
 type configDataProviderFileLoader struct {
 	Path string
 }
 type configDataProvider struct {
-	FileLoader *configDataProviderFileLoader
-	Random     *struct{}
+	FileLoader  *configDataProviderFileLoader
+	Random      *struct{}
+	Neutralizer *configDataProviderNeutralizerMinResultsSize
 }
 type config struct {
 	Address onet_network.Address

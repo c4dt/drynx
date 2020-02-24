@@ -78,15 +78,19 @@ type DataCollectionProtocol struct {
 	// Protocol proof data
 	MapPIs map[string]onet.ProtocolInstance
 
-	// how to get data locally, TODO own by ServiceDrynx
+	// how to get data locally
 	loader provider.Loader
+
+	// when to refuse to release results
+	neutralizer provider.Neutralizer
 }
 
 // NewDataCollectionProtocol constructs a DataCollection protocol instance
-func NewDataCollectionProtocol(loader provider.Loader) DataCollectionProtocol {
+func NewDataCollectionProtocol(loader provider.Loader, neutralizer provider.Neutralizer) DataCollectionProtocol {
 	return DataCollectionProtocol{
 		FeedbackChannel: make(chan map[string]libunlynx.CipherVector),
 		loader:          loader,
+		neutralizer:     neutralizer,
 	}
 }
 
@@ -170,6 +174,21 @@ func (p *DataCollectionProtocol) Dispatch() error {
 // Support Functions
 //______________________________________________________________________________________________________________________
 
+func generateNeutralResponse(survey SurveyToDP, groupsStrings []string) libdrynx.ResponseDPBytes {
+	encrypted := make(libunlynx.CipherVector, survey.Query.Operation.NbrOutput)
+	for i := range encrypted {
+		encrypted[i] = *libunlynx.EncryptInt(survey.Aggregate, 0)
+	}
+	raw, _, _ := encrypted.ToBytes()
+
+	grouped := make(map[string][]byte, len(groupsStrings))
+	for _, g := range groupsStrings {
+		grouped[g] = raw
+	}
+
+	return libdrynx.ResponseDPBytes{Data: grouped, Len: len(groupsStrings)}
+}
+
 // GenerateData is used to generate data at DPs, this is more for simulation's purposes
 func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	// Prepare the generation of all possible groups with the query information.
@@ -194,21 +213,17 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 		}
 	}
 
-	// generate fake random data depending on the operation
+	// load wanted data
 	providedData, err := p.loader.Provide(p.Survey.Query)
 	if err != nil {
 		log.Errorf("unable to provide using loader: %v", err)
+		return generateNeutralResponse(p.Survey, groupsString)
+	}
 
-		encrypted := libunlynx.CipherVector{
-			*libunlynx.EncryptInt(p.Survey.Aggregate, 0)}
-		raw, _, _ := encrypted.ToBytes()
-
-		grouped := make(map[string][]byte, len(groupsString))
-		for _, g := range groupsString {
-			grouped[g] = raw
-		}
-
-		return libdrynx.ResponseDPBytes{Data: grouped, Len: 1}
+	// vet results
+	if n := p.neutralizer; n != nil && !n.Vet(p.Survey.Query, providedData) {
+		log.Warn("results neutralized")
+		return generateNeutralResponse(p.Survey, groupsString)
 	}
 
 	// logistic regression specific

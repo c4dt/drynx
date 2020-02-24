@@ -88,7 +88,8 @@ type ServiceDrynx struct {
 	// -------------------------
 
 	// ---- Data Provider ----
-	loader provider.Loader
+	loader      provider.Loader
+	neutralizer provider.Neutralizer
 	// -------------------------
 
 	// ---- Verifying Nodes ----
@@ -382,7 +383,8 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	case protocols.ProofCollectionProtocolName:
 		return s.NewProofCollectionProtocolInstance(tn, target)
 	case protocols.DataCollectionProtocolName:
-		dcp := protocols.NewDataCollectionProtocol(s.loader)
+		dcp := protocols.NewDataCollectionProtocol(s.loader, s.neutralizer)
+		// TODO can't we remove this registering?
 		dcp.ProtocolRegister(tn)
 
 		if !tn.IsRoot() {

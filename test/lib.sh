@@ -61,6 +61,7 @@ start_nodes() {
 
 		echo "$node_conf" |
 				server data-provider new $loader |
+					server data-provider set-neutralizer minimum-results-size 0 |
 				server computing-node new |
 				server verifying-node new |
 				DEBUG_COLOR=true server run &

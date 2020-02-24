@@ -24,7 +24,8 @@ func init() {
 }
 
 type builderDataProvider struct {
-	loader provider.Loader
+	loader      provider.Loader
+	neutralizer provider.Neutralizer
 }
 
 // Builder is the state of node creation.
@@ -62,7 +63,7 @@ func (b Builder) WithComputingNode() Builder {
 }
 
 // WithDataProvider add support for running as a Data Provider.
-func (b Builder) WithDataProvider(loader provider.Loader) Builder {
+func (b Builder) WithDataProvider(loader provider.Loader, neutralizer provider.Neutralizer) Builder {
 	if loader == nil {
 		panic("WithDataProvider: loader == nil")
 	}
@@ -70,13 +71,13 @@ func (b Builder) WithDataProvider(loader provider.Loader) Builder {
 	onet_network.RegisterMessage(protocols.AnnouncementDCMessage{})
 	onet_network.RegisterMessage(protocols.DataCollectionMessage{})
 
-	dcp := protocols.NewDataCollectionProtocol(loader)
+	dcp := protocols.NewDataCollectionProtocol(loader, neutralizer)
 	_, err := onet.GlobalProtocolRegister(protocols.DataCollectionProtocolName, dcp.ProtocolRegister)
 	if err != nil {
 		log.Fatal("Error registering <DataCollectionProtocol>:", err)
 	}
 
-	b.dataProvider = &builderDataProvider{loader}
+	b.dataProvider = &builderDataProvider{loader, neutralizer}
 	return b
 }
 
@@ -91,6 +92,10 @@ func (b Builder) Start() {
 	if b.dataProvider != nil {
 		loader = b.dataProvider.loader
 	}
+	var neutralizer provider.Neutralizer
+	if b.dataProvider != nil {
+		neutralizer = b.dataProvider.neutralizer
+	}
 
 	_, err := onet.RegisterNewService(ServiceName, func(c *onet.Context) (onet.Service, error) {
 		if loader == nil {
@@ -101,6 +106,7 @@ func (b Builder) Start() {
 			Survey:           concurrent.NewConcurrentMap(),
 			Mutex:            &sync.Mutex{},
 			loader:           loader,
+			neutralizer:      neutralizer,
 		}
 
 		registerHandler := func(handler interface{}) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/provider/loaders"
+	"github.com/ldsec/drynx/lib/provider/neutralizers"
 	"github.com/ldsec/drynx/protocols"
 	"github.com/ldsec/unlynx/lib"
 	"github.com/stretchr/testify/assert"
@@ -99,7 +100,7 @@ func NewDataCollectionTest(tni *onet.TreeNodeInstance) (onet.ProtocolInstance, e
 		return nil, err
 	}
 
-	dcp := protocols.NewDataCollectionProtocol(loader)
+	dcp := protocols.NewDataCollectionProtocol(loader, neutralizers.NewMinimumResultsSize(0))
 	dcp.Survey = query
 	dcp.ProtocolRegister(tni)
 	return &dcp, nil

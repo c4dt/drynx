@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	kyber_encoding "go.dedis.ch/kyber/v3/util/encoding"
@@ -14,8 +15,9 @@ import (
 	onet_network "go.dedis.ch/onet/v3/network"
 
 	"github.com/ldsec/drynx/lib"
-	provider "github.com/ldsec/drynx/lib/provider"
-	loaders "github.com/ldsec/drynx/lib/provider/loaders"
+	"github.com/ldsec/drynx/lib/provider"
+	"github.com/ldsec/drynx/lib/provider/loaders"
+	"github.com/ldsec/drynx/lib/provider/neutralizers"
 	drynx_services "github.com/ldsec/drynx/services"
 
 	"github.com/pelletier/go-toml"
@@ -78,6 +80,31 @@ func dataProviderNewRandom(c *cli.Context) error {
 	return conf.writeTo(os.Stdout)
 }
 
+func dataProviderSetNeutralizerMinimumResultsSize(c *cli.Context) error {
+	args := c.Args()
+	if len(args) != 1 {
+		return errors.New("need a minimum")
+	}
+	minimum, err := strconv.ParseUint(args[0], 10, 0)
+	if err != nil {
+		return err
+	}
+
+	conf, err := readConfigFrom(os.Stdin)
+	if err != nil {
+		return err
+	}
+
+	if conf.DataProvider == nil {
+		return errors.New("not on data-provider stream")
+	}
+	conf.DataProvider.Neutralizer = &configDataProviderNeutralizerMinResultsSize{
+		MinimumResultsSize: uint(minimum),
+	}
+
+	return conf.writeTo(os.Stdout)
+}
+
 func gen(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 2 {
@@ -127,9 +154,14 @@ func run(c *cli.Context) error {
 		}
 	}
 
+	var neutralizer provider.Neutralizer
+	if c := conf.DataProvider.Neutralizer; c != nil {
+		neutralizer = neutralizers.NewMinimumResultsSize(c.MinimumResultsSize)
+	}
+
 	drynx_services.NewBuilder().
 		WithComputingNode().
-		WithDataProvider(loader).
+		WithDataProvider(loader, neutralizer).
 		WithVerifyingNode().
 		Start()
 
@@ -178,6 +210,7 @@ func main() {
 	if you want to generate a server config, use something like
 		%[1]s new {1,2}.drynx.c4dt.org |
 			%[1]s data-provider new file-loader $my_data |
+				%[1]s data-provider set-neutralizer minimum-results-size 3 |
 			%[1]s computing-node new |
 			%[1]s verifying-node new >
 			$my_node_config
@@ -212,6 +245,13 @@ func main() {
 			}, {
 				Name:   "random",
 				Action: dataProviderNewRandom,
+			}},
+		}, {
+			Name:  "set-neutralizer",
+			Usage: "on a data-provider config stream, set the neutralizer to use",
+			Subcommands: []cli.Command{{
+				Name:   "minimum-results-size",
+				Action: dataProviderSetNeutralizerMinimumResultsSize,
 			}},
 		}}}, {
 		Name:  "verifying-node",

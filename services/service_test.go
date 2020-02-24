@@ -5,6 +5,7 @@ import (
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/encoding"
 	"github.com/ldsec/drynx/lib/provider/loaders"
+	"github.com/ldsec/drynx/lib/provider/neutralizers"
 	"github.com/ldsec/drynx/lib/range"
 	"github.com/ldsec/drynx/services"
 	"github.com/ldsec/unlynx/lib"
@@ -34,7 +35,7 @@ func generateNodes(local *onet.LocalTest, nbrServers int, nbrDPs int, nbrVNs int
 	}
 	services.NewBuilder().
 		WithComputingNode().
-		WithDataProvider(loader).
+		WithDataProvider(loader, neutralizers.NewMinimumResultsSize(0)).
 		WithVerifyingNode().
 		Start()
 
@@ -729,7 +730,7 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 	}
 	services.NewBuilder().
 		WithComputingNode().
-		WithDataProvider(loader).
+		WithDataProvider(loader, neutralizers.NewMinimumResultsSize(0)).
 		WithVerifyingNode().
 		Start()
 
