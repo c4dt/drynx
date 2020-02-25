@@ -21,10 +21,8 @@ func intsToFloats(arr []int64) []float64 {
 	return ret
 }
 
-// Range represents a width between two int64
-type Range struct {
-	min, max int64
-}
+// Range represents a width between two int
+type Range struct{ min, max int }
 
 // MarshalBinary encodes to binary
 func (r Range) MarshalBinary() ([]byte, error) {

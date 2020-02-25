@@ -19,7 +19,7 @@ func (FrequencyCount) MarshalID() [8]byte {
 }
 
 // NewFrequencyCount creates a new FrequencyCount bound to the given range.
-func NewFrequencyCount(min, max int64) (FrequencyCount, error) {
+func NewFrequencyCount(min, max int) (FrequencyCount, error) {
 	if min > max {
 		return FrequencyCount{}, errors.New("given minimum is greater than maximum")
 	}
@@ -33,7 +33,7 @@ func (fc FrequencyCount) ExecuteOnProvider(loaded [][]float64) ([]float64, error
 	}
 
 	converted := floatsToInts(loaded[0])
-	freqCount := libdrynxencoding.ExecuteFreqCountOnProvider(converted, fc.min, fc.max)
+	freqCount := libdrynxencoding.ExecuteFreqCountOnProvider(converted, int64(fc.min), int64(fc.max))
 	ret := make([]float64, len(freqCount))
 	for i, v := range freqCount {
 		ret[i] = float64(v)

@@ -80,17 +80,17 @@ func surveySetOperation(c *cli.Context) error {
 			return errors.New("range should be ','-separated")
 		}
 
-		min, err := strconv.ParseInt(splitted[0], 10, 64)
+		min, err := strconv.ParseInt(splitted[0], 10, 0)
 		if err != nil {
 			return err
 		}
 
-		max, err := strconv.ParseInt(splitted[1], 10, 64)
+		max, err := strconv.ParseInt(splitted[1], 10, 0)
 		if err != nil {
 			return err
 		}
 
-		parsedRange = &cmd.Range{Min: min, Max: max}
+		parsedRange = &cmd.Range{Min: int(min), Max: int(max)}
 	}
 
 	conf, err := readConfigFrom(os.Stdin)
