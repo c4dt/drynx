@@ -662,7 +662,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 	aggregationTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_AggregationPhase")
 	err := s.AggregationPhase(target.SurveyQuery.SurveyID)
 	if err != nil {
-		log.Fatal("Error in the Aggregation Phase:", err)
+		return fmt.Errorf("Aggregation Phase: %v", err)
 	}
 	libunlynx.EndTimer(aggregationTimer)
 
@@ -670,7 +670,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 		//obfuscationTimer := libDrynx.StartTimer(s.ServerIdentity().String() + "_ObfuscationPhase")
 		err := s.ObfuscationPhase(target.SurveyQuery.SurveyID)
 		if err != nil {
-			log.Fatal("Error in the Obfuscation Phase:", err)
+			return fmt.Errorf("Obfuscation Phase: %v", err)
 		}
 		//libDrynx.EndTimer(obfuscationTimer)
 	}
@@ -684,7 +684,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 	keySwitchTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_KeySwitchingPhase")
 	err = s.KeySwitchingPhase(target.SurveyQuery.SurveyID)
 	if err != nil {
-		log.Fatal("Error in the Key Switching Phase")
+		return fmt.Errorf("Key Switching Phase: %v", err)
 	}
 	libunlynx.EndTimer(keySwitchTimer)
 
