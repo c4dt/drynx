@@ -46,18 +46,6 @@ type SurveyToDP struct {
 	Query libdrynx.Query // the query must be added to each node before the protocol can start
 }
 
-// AnnouncementDCStruct announcement message
-type AnnouncementDCStruct struct {
-	*onet.TreeNode
-	AnnouncementDCMessage
-}
-
-// DataCollectionStruct is the wrapper of DataCollectionMessage to be used in a channel
-type DataCollectionStruct struct {
-	*onet.TreeNode
-	DataCollectionMessage
-}
-
 // Protocol
 //______________________________________________________________________________________________________________________
 
@@ -69,8 +57,14 @@ type DataCollectionProtocol struct {
 	FeedbackChannel chan map[string]libunlynx.CipherVector //map containing the aggregation of all data providers' responses
 
 	// Protocol communication channels
-	AnnouncementChannel   chan AnnouncementDCStruct
-	DataCollectionChannel chan DataCollectionStruct
+	AnnouncementChannel chan struct {
+		*onet.TreeNode
+		AnnouncementDCMessage
+	}
+	DataCollectionChannel chan struct {
+		*onet.TreeNode
+		DataCollectionMessage
+	}
 
 	// Protocol state data
 	Survey SurveyToDP
