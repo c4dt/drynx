@@ -308,7 +308,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 
 	case protocolsunlynx.CollectiveAggregationProtocolName:
 		survey := s.waitForSurvey(target)
-		pi, err := s.NewCollectiveAggregationProtocol(tn, target, survey)
+		pi, err := s.NewCollectiveAggregationProtocol(tn, survey)
 		if err != nil {
 			return nil, err
 		}
@@ -343,7 +343,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 
 	case protocolsunlynx.KeySwitchingProtocolName:
 		survey := castToSurvey(s.Survey.Get(target))
-		pi, err := s.NewKeySwitchingProtocol(tn, target, survey)
+		pi, err := s.NewKeySwitchingProtocol(tn, survey)
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +356,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 }
 
 // NewCollectiveAggregationProtocol defines a new collective aggregation protocol
-func (s *ServiceDrynx) NewCollectiveAggregationProtocol(tn *onet.TreeNodeInstance, target string, survey Survey) (onet.ProtocolInstance, error) {
+func (s *ServiceDrynx) NewCollectiveAggregationProtocol(tn *onet.TreeNodeInstance, survey Survey) (onet.ProtocolInstance, error) {
 	pi, err := protocolsunlynx.NewCollectiveAggregationProtocol(tn)
 	if err != nil {
 		return nil, err
@@ -386,7 +386,7 @@ func (s *ServiceDrynx) NewCollectiveAggregationProtocol(tn *onet.TreeNodeInstanc
 			}
 
 			pi := survey.MapPIs["aggregation/"+s.ServerIdentity().String()]
-			pi.(*protocols.ProofCollectionProtocol).Proof = drynxproof.ProofRequest{AggregationProof: drynxproof.NewAggregationProofRequest(&aggrLocalProof, target, s.ServerIdentity().String(), "", survey.SurveyQuery.Query.RosterVNs, tn.Private(), nil)}
+			pi.(*protocols.ProofCollectionProtocol).Proof = drynxproof.ProofRequest{AggregationProof: drynxproof.NewAggregationProofRequest(&aggrLocalProof, survey.SurveyQuery.SurveyID, s.ServerIdentity().String(), "", survey.SurveyQuery.Query.RosterVNs, tn.Private(), nil)}
 
 			go func() {
 				if err := pi.Dispatch(); err != nil {
@@ -407,7 +407,7 @@ func (s *ServiceDrynx) NewCollectiveAggregationProtocol(tn *onet.TreeNodeInstanc
 }
 
 // NewKeySwitchingProtocol defines a new key switching protocol
-func (s *ServiceDrynx) NewKeySwitchingProtocol(tn *onet.TreeNodeInstance, target string, survey Survey) (onet.ProtocolInstance, error) {
+func (s *ServiceDrynx) NewKeySwitchingProtocol(tn *onet.TreeNodeInstance, survey Survey) (onet.ProtocolInstance, error) {
 	pi, err := protocolsunlynx.NewKeySwitchingProtocol(tn)
 	if err != nil {
 		return nil, err
@@ -450,7 +450,7 @@ func (s *ServiceDrynx) NewKeySwitchingProtocol(tn *onet.TreeNodeInstance, target
 		tmp := survey.SurveyQuery.ClientPubKey
 		keySwitch.TargetPublicKey = &tmp
 
-		_, err = s.Survey.Put(string(target), survey)
+		_, err = s.Survey.Put(survey.SurveyQuery.SurveyID, survey)
 		if err != nil {
 			return nil, err
 		}
