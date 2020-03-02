@@ -282,11 +282,6 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 		return nil, errors.New("conf is nil")
 	}
 
-	err := tn.SetConfig(conf)
-	if err != nil {
-		return nil, err
-	}
-
 	target := string(conf.Data)
 
 	switch tn.ProtocolName() {
@@ -536,6 +531,9 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 	tn = s.NewTreeNodeInstance(tree, tree.Root, name)
 
 	conf := onet.GenericConfig{Data: []byte(string(targetSurvey))}
+	if err := tn.SetConfig(&conf); err != nil {
+		return nil, err
+	}
 
 	pi, err := s.NewProtocol(tn, &conf)
 	if err != nil {
