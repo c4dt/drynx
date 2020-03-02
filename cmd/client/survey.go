@@ -172,6 +172,23 @@ func surveyRun(c *cli.Context) error {
 		return errors.New("Operation can't take #Sources")
 	}
 
+	CNsToDPs := make(map[string]*libdrynx.ServerIdentityList)
+	for i, cn := range roster.List {
+		var dps []onet_network.ServerIdentity
+		for j, dp := range roster.List {
+			// TODO can't query itself
+			if i != j {
+				dps = append(dps, *dp)
+			}
+		}
+		CNsToDPs[cn.String()] = &libdrynx.ServerIdentityList{Content: dps}
+	}
+
+	nodeToPublicKeys := make(map[string]kyber.Point)
+	for _, node := range roster.List {
+		nodeToPublicKeys[node.String()] = node.Public
+	}
+
 	query := libdrynx.Query{
 		Operation:   operation,
 		Ranges:      []*libdrynx.Int64List{}, // range for each output of operation
@@ -190,14 +207,8 @@ func surveyRun(c *cli.Context) error {
 	_, aggregations, err := client.SendSurveyQuery(libdrynx.SurveyQuery{
 		SurveyID:      *conf.Survey.Name,
 		RosterServers: roster,
-		ServerToDP: map[string]*libdrynx.ServerIdentityList{ // map CN to DPs
-			roster.List[0].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[1], *roster.List[2]}},
-			roster.List[1].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[2], *roster.List[0]}},
-			roster.List[2].String(): &libdrynx.ServerIdentityList{Content: []onet_network.ServerIdentity{*roster.List[0], *roster.List[1]}}},
-		IDtoPublic: map[string]kyber.Point{ // map CN|DP|VN to pub key
-			roster.List[0].String(): roster.List[0].Public,
-			roster.List[1].String(): roster.List[1].Public,
-			roster.List[2].String(): roster.List[2].Public},
+		ServerToDP:    CNsToDPs,         // map CN to DPs
+		IDtoPublic:    nodeToPublicKeys, // map CN|DP|VN to pub key
 
 		Query: query,
 
