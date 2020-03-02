@@ -287,8 +287,6 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 		return nil, err
 	}
 
-	var pi onet.ProtocolInstance
-
 	target := string(conf.Data)
 
 	switch tn.ProtocolName() {
@@ -310,11 +308,12 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 			dcp.Survey = queryStatement
 			dcp.MapPIs = survey.MapPIs
 		}
+
 		return &dcp, nil
 
 	case protocolsunlynx.CollectiveAggregationProtocolName:
 		survey := s.waitForSurvey(target)
-		pi, err = s.NewCollectiveAggregationProtocol(tn, target, survey)
+		pi, err := s.NewCollectiveAggregationProtocol(tn, target, survey)
 		if err != nil {
 			return nil, err
 		}
@@ -323,7 +322,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 
 	case protocols.ObfuscationProtocolName:
 		survey := castToSurvey(s.Survey.Get(target))
-		pi, err = protocols.NewObfuscationProtocol(tn)
+		pi, err := protocols.NewObfuscationProtocol(tn)
 		if err != nil {
 			return nil, err
 		}
@@ -335,10 +334,12 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 		obfuscation.Query = &survey.SurveyQuery
 		obfuscation.MapPIs = survey.MapPIs
 
+		return pi, nil
+
 	case protocolsunlynx.DROProtocolName:
 		survey := castToSurvey(s.Survey.Get(target))
 		log.Lvl2("SERVICE] <drynx> Server", s.ServerIdentity(), " Servers collectively add noise for differential privacy")
-		pi, err = s.NewShufflingProtocol(tn, survey)
+		pi, err := s.NewShufflingProtocol(tn, survey)
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +348,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 
 	case protocolsunlynx.KeySwitchingProtocolName:
 		survey := castToSurvey(s.Survey.Get(target))
-		pi, err = s.NewKeySwitchingProtocol(tn, target, survey)
+		pi, err := s.NewKeySwitchingProtocol(tn, target, survey)
 		if err != nil {
 			return nil, err
 		}
@@ -357,8 +358,6 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	default:
 		return nil, errors.New("Service attempts to start an unknown protocol: " + tn.ProtocolName() + ".")
 	}
-
-	return pi, nil
 }
 
 // NewCollectiveAggregationProtocol defines a new collective aggregation protocol
