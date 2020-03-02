@@ -118,11 +118,6 @@ func (b Builder) Start() {
 		registerHandler(newDrynxInstance.HandleSurveyQuery)
 		registerHandler(newDrynxInstance.HandleSurveyQueryToDP)
 		registerHandler(newDrynxInstance.HandleSurveyQueryToVN)
-		if waitOnLocalChans {
-			registerHandler(newDrynxInstance.HandleDPqueryReceived)
-			registerHandler(newDrynxInstance.HandleSyncDCP)
-			registerHandler(newDrynxInstance.HandleDPdataFinished)
-		}
 		registerHandler(newDrynxInstance.HandleEndVerification)
 		registerHandler(newDrynxInstance.HandleGetLatestBlock)
 		registerHandler(newDrynxInstance.HandleGetGenesis)
@@ -132,11 +127,6 @@ func (b Builder) Start() {
 
 		c.RegisterProcessor(newDrynxInstance, msgTypes.msgSurveyQuery)
 		c.RegisterProcessor(newDrynxInstance, msgTypes.msgSurveyQueryToDP)
-		if waitOnLocalChans {
-			c.RegisterProcessor(newDrynxInstance, msgTypes.msgDPqueryReceived)
-			c.RegisterProcessor(newDrynxInstance, msgTypes.msgSyncDCP)
-			c.RegisterProcessor(newDrynxInstance, msgTypes.msgDPdataFinished)
-		}
 
 		//Register new verifFunction
 		if err := skipchain.RegisterVerification(c, VerifyBitmap, newDrynxInstance.verifyFuncBitmap); err != nil {
