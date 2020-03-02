@@ -26,9 +26,6 @@ import (
 	"time"
 )
 
-// waitOnLocalChans is for debug, working solely when running everything in the same process
-const waitOnLocalChans = false
-
 // ServiceName is the registered name for the drynx service.
 const ServiceName = "drynx"
 
@@ -41,12 +38,6 @@ type Survey struct {
 	Noises             libunlynx.CipherVector
 	ShufflePrecompute  []libunlynxshuffle.CipherVectorScalar
 	MapPIs             map[string]onet.ProtocolInstance
-
-	// channels
-	DPqueryChannel chan int // To wait for all DPs to finish the getting the query before continuing
-	SyncDCPChannel chan int // To wait to synchronize the execution of the data collection protocol between the servers
-	DPdataChannel  chan int // To wait for all nodes to finish the getting their data before continuing
-	DiffPChannel   chan int // To wait for the noise to be collectively computed
 
 	// mutex
 	Mutex *sync.Mutex
@@ -130,18 +121,6 @@ func (s *ServiceDrynx) Process(msg *network.Envelope) {
 		tmp := (msg.Msg).(*libdrynx.SurveyQueryToDP)
 		_, err := s.HandleSurveyQueryToDP(tmp)
 		log.ErrFatal(err)
-	} else if waitOnLocalChans && msg.MsgType.Equal(msgTypes.msgDPqueryReceived) {
-		tmp := (msg.Msg).(*DPqueryReceived)
-		_, err := s.HandleDPqueryReceived(tmp)
-		log.ErrFatal(err)
-	} else if waitOnLocalChans && msg.MsgType.Equal(msgTypes.msgSyncDCP) {
-		tmp := (msg.Msg).(*SyncDCP)
-		_, err := s.HandleSyncDCP(tmp)
-		log.ErrFatal(err)
-	} else if waitOnLocalChans && msg.MsgType.Equal(msgTypes.msgDPdataFinished) {
-		tmp := (msg.Msg).(*DPdataFinished)
-		_, err := s.HandleDPdataFinished(tmp)
-		log.ErrFatal(err)
 	} else {
 		log.Warnf("unprocessed message: %#v", msg)
 	}
@@ -159,24 +138,6 @@ func (s *ServiceDrynx) waitForSurvey(id string) Survey {
 
 // Query Handlers
 //______________________________________________________________________________________________________________________
-
-// HandleDPqueryReceived handles the channel that each server has to know when to proceed with data collection protocol
-func (s *ServiceDrynx) HandleDPqueryReceived(recq *DPqueryReceived) (network.Message, error) {
-	s.waitForSurvey(recq.SurveyID).DPqueryChannel <- 1
-	return nil, nil
-}
-
-// HandleSyncDCP handles the messages to synchronize between computing nodes
-func (s *ServiceDrynx) HandleSyncDCP(recq *SyncDCP) (network.Message, error) {
-	s.waitForSurvey(recq.SurveyID).SyncDCPChannel <- 1
-	return nil, nil
-}
-
-// HandleDPdataFinished handles the channel that each server has to know when to proceed with the collective aggregation
-func (s *ServiceDrynx) HandleDPdataFinished(recq *DPdataFinished) (network.Message, error) {
-	s.waitForSurvey(recq.SurveyID).DPdataChannel <- 1
-	return nil, nil
-}
 
 // HandleSurveyQuery handles the reception of a survey creation query by instantiating the corresponding survey.
 func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Message, error) {
@@ -216,12 +177,8 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 
 	// survey instantiation
 	_, err := s.Survey.Put(recq.SurveyID, Survey{
-		SurveyQuery:    *recq,
-		DPqueryChannel: make(chan int, nbrDPs),
-		SyncDCPChannel: make(chan int, nbrDPs),
-		DPdataChannel:  make(chan int, nbrDPs),
-		DiffPChannel:   make(chan int, nbrDPs),
-		MapPIs:         mapPIs,
+		SurveyQuery: *recq,
+		MapPIs:      mapPIs,
 	})
 	if err != nil {
 		return nil, err
@@ -276,32 +233,6 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 		}()
 	}
 
-	// wait for all DPs to get the query
-	if waitOnLocalChans && listDPs != nil {
-		info("waiting on DPs to receive the query")
-		counter := len(*CNsToDPs[s.ServerIdentity().String()])
-		for counter > 0 {
-			counter = counter - (<-castToSurvey(s.Survey.Get(recq.SurveyID)).DPqueryChannel)
-		}
-	}
-
-	// TODO: we can remove this waiting after the test
-	// -----------------------------------------------------------------------------------------------------------------
-	// signal other nodes that the data provider(s) already sent their data (response)
-	if waitOnLocalChans {
-		info("broadcasting [syncDCPChannel]")
-		err = libunlynxtools.SendISMOthers(s.ServiceProcessor, &recq.RosterServers, &SyncDCP{recq.SurveyID})
-		if err != nil {
-			die("broadcasting [syncDCPChannel] error", err)
-		}
-
-		counter := len(recq.RosterServers.List) - 1
-		for counter > 0 {
-			counter = counter - (<-castToSurvey(s.Survey.Get(recq.SurveyID)).SyncDCPChannel)
-		}
-	}
-	// -----------------------------------------------------------------------------------------------------------------
-
 	startDataCollectionProtocol := libunlynx.StartTimer(s.ServerIdentity().String() + "_DataCollectionProtocol")
 	if listDPs != nil {
 		info("starting data collection phase")
@@ -310,25 +241,6 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 			die("data collection error", err)
 		}
 		libunlynx.EndTimer(startDataCollectionProtocol)
-	}
-
-	if waitOnLocalChans {
-		//startWaitTimeDPs := libunlynx.StartTimer(s.ServerIdentity().String() + "_WaitTimeDPs")
-		// signal other nodes that the data provider(s) already sent their data (response)
-		info("broadcasting [DPdataFinished]", err)
-		err = libunlynxtools.SendISMOthers(s.ServiceProcessor, &recq.RosterServers, &DPdataFinished{recq.SurveyID})
-		if err != nil {
-			die("broadcasting [DPdataFinished] error", err)
-		}
-
-		counter := len(recq.RosterServers.List) - 1
-		for counter > 0 {
-			info("is waiting for", counter, "servers to finish collecting their data")
-			counter = counter - (<-castToSurvey(s.Survey.Get(recq.SurveyID)).DPdataChannel)
-		}
-		info("all data providers have sent their data")
-
-		//libDrynx.EndTimer(startWaitTimeDPs)
 	}
 
 	// ready to start the collective aggregation & key switching protocol
@@ -675,11 +587,6 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 		//libDrynx.EndTimer(obfuscationTimer)
 	}
 
-	// DRO Phase
-	if waitOnLocalChans && libdrynx.AddDiffP(target.SurveyQuery.Query.DiffP) {
-		<-target.DiffPChannel
-	}
-
 	// Key Switch Phase
 	keySwitchTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_KeySwitchingPhase")
 	err = s.KeySwitchingPhase(target.SurveyQuery.SurveyID)
@@ -766,7 +673,6 @@ func (s *ServiceDrynx) DROPhase(targetSurvey string) error {
 		noises[i] = v[0]
 	}
 	survey.Noises = noises
-	survey.DiffPChannel <- 1
 	_, err = s.Survey.Put(string(targetSurvey), survey)
 	if err != nil {
 		return err
@@ -787,7 +693,6 @@ func (s *ServiceDrynx) DROLocalPhase(targetSurvey string) error {
 		noises[i] = v[0]
 	}
 	survey.Noises = noises
-	survey.DiffPChannel <- 1
 	_, err = s.Survey.Put(string(targetSurvey), survey)
 	if err != nil {
 		return err
