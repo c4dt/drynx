@@ -1,6 +1,6 @@
 set -eumo pipefail
 
-readonly node_count=3
+readonly node_count=5
 readonly host_name=localhost
 
 tmpdir=$(mktemp -d)

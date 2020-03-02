@@ -4,4 +4,4 @@
 start_nodes
 
 client_gen_network |
-	grep -F 'localhost:' | wc -l | xargs test 4 -eq
+	grep -F 'localhost:' | wc -l | xargs test $((node_count + 1)) -eq
