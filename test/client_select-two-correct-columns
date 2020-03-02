@@ -16,4 +16,4 @@ start_nodes providing
 		client survey set-sources col{1,3} |
 		client survey set-operation cosim
 ) | client survey run |
-	xargs -t test -0.9999999999999999 =
+	xargs test -1 =
