@@ -375,6 +375,10 @@ func (s *ServiceDrynx) CreateProofCollectionPIs(tree *onet.Tree, targetSurvey, n
 	tn = s.NewTreeNodeInstance(tree, tree.Root, protocols.ProofCollectionProtocolName)
 
 	conf := onet.GenericConfig{Data: []byte(targetSurvey)}
+	if err := tn.SetConfig(&conf); err != nil {
+		return nil, err
+	}
+
 	pi, err := s.NewProtocol(tn, &conf)
 	if err != nil {
 		log.Fatal("Error running" + name)
