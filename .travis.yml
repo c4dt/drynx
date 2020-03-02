@@ -1,7 +1,7 @@
 dist: trusty
 
 language: go
-go: stable
+go: "1.13" # fixing 1.13 until cothority is fixed
 
 env:
   DOCKER_USERNAME: c4dtbot
