@@ -100,8 +100,14 @@ func NewDataCollectionTest(tni *onet.TreeNodeInstance) (onet.ProtocolInstance, e
 		return nil, err
 	}
 
-	dcp := protocols.NewDataCollectionProtocol(loader, neutralizers.NewMinimumResultsSize(0))
+	pi, err := protocols.NewDataCollectionProtocol(tni)
+	if err != nil {
+		return nil, err
+	}
+
+	dcp := pi.(*protocols.DataCollectionProtocol)
+	dcp.Loader = loader
+	dcp.Neutralizer = neutralizers.NewMinimumResultsSize(0)
 	dcp.Survey = query
-	dcp.ProtocolRegister(tni)
-	return &dcp, nil
+	return dcp, nil
 }
