@@ -554,13 +554,12 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 			log.Fatal(err)
 		}
 	}()
-	go func() {
-		if err := pi.Start(); err != nil {
-			log.Fatal(err)
-		}
-	}()
 
-	return pi, err
+	if err := pi.Start(); err != nil {
+		return nil, err
+	}
+
+	return pi, nil
 }
 
 // Service Phases
