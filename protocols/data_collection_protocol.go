@@ -1,7 +1,6 @@
 package protocols
 
 import (
-	"errors"
 	"fmt"
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/encoding"
@@ -73,33 +72,25 @@ type DataCollectionProtocol struct {
 	MapPIs map[string]onet.ProtocolInstance
 
 	// how to get data locally
-	loader provider.Loader
+	Loader provider.Loader
 
 	// when to refuse to release results
-	neutralizer provider.Neutralizer
+	Neutralizer provider.Neutralizer
 }
 
 // NewDataCollectionProtocol constructs a DataCollection protocol instance
-func NewDataCollectionProtocol(loader provider.Loader, neutralizer provider.Neutralizer) DataCollectionProtocol {
-	return DataCollectionProtocol{
-		FeedbackChannel: make(chan map[string]libunlynx.CipherVector),
-		loader:          loader,
-		neutralizer:     neutralizer,
-	}
-}
-
-// ProtocolRegister is for passing to onet.GlobalProtocolRegister
-func (p *DataCollectionProtocol) ProtocolRegister(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
-	p.TreeNodeInstance = n
-
-	err := p.RegisterChannel(&p.AnnouncementChannel)
-	if err != nil {
-		return nil, errors.New("couldn't register data reference channel: " + err.Error())
+func NewDataCollectionProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
+	p := &DataCollectionProtocol{
+		TreeNodeInstance: n,
+		FeedbackChannel:  make(chan map[string]libunlynx.CipherVector),
 	}
 
-	err = p.RegisterChannel(&p.DataCollectionChannel)
-	if err != nil {
-		return nil, errors.New("couldn't register data reference channel: " + err.Error())
+	if err := p.RegisterChannel(&p.AnnouncementChannel); err != nil {
+		return nil, fmt.Errorf("couldn't register data reference channel: %v", err)
+	}
+
+	if err := p.RegisterChannel(&p.DataCollectionChannel); err != nil {
+		return nil, fmt.Errorf("couldn't register data reference channel: %v", err)
 	}
 
 	return p, nil
@@ -208,14 +199,14 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	}
 
 	// load wanted data
-	providedData, err := p.loader.Provide(p.Survey.Query)
+	providedData, err := p.Loader.Provide(p.Survey.Query)
 	if err != nil {
 		log.Errorf("unable to provide using loader: %v", err)
 		return generateNeutralResponse(p.Survey, groupsString)
 	}
 
 	// vet results
-	if n := p.neutralizer; n != nil && !n.Vet(p.Survey.Query, providedData) {
+	if n := p.Neutralizer; n != nil && !n.Vet(p.Survey.Query, providedData) {
 		log.Warn("results neutralized")
 		return generateNeutralResponse(p.Survey, groupsString)
 	}

@@ -288,9 +288,14 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	case protocols.ProofCollectionProtocolName:
 		return s.NewProofCollectionProtocolInstance(tn, target)
 	case protocols.DataCollectionProtocolName:
-		dcp := protocols.NewDataCollectionProtocol(s.loader, s.neutralizer)
-		// TODO can't we remove this registering?
-		dcp.ProtocolRegister(tn)
+		pi, err := protocols.NewDataCollectionProtocol(tn)
+		if err != nil {
+			return nil, err
+		}
+
+		dcp := pi.(*protocols.DataCollectionProtocol)
+		dcp.Loader = s.loader
+		dcp.Neutralizer = s.neutralizer
 
 		if !tn.IsRoot() {
 			survey := s.waitForSurvey(target)
@@ -304,7 +309,7 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 			dcp.MapPIs = survey.MapPIs
 		}
 
-		return &dcp, nil
+		return dcp, nil
 
 	case protocolsunlynx.CollectiveAggregationProtocolName:
 		survey := s.waitForSurvey(target)

@@ -71,8 +71,7 @@ func (b Builder) WithDataProvider(loader provider.Loader, neutralizer provider.N
 	onet_network.RegisterMessage(protocols.AnnouncementDCMessage{})
 	onet_network.RegisterMessage(protocols.DataCollectionMessage{})
 
-	dcp := protocols.NewDataCollectionProtocol(loader, neutralizer)
-	_, err := onet.GlobalProtocolRegister(protocols.DataCollectionProtocolName, dcp.ProtocolRegister)
+	_, err := onet.GlobalProtocolRegister(protocols.DataCollectionProtocolName, protocols.NewDataCollectionProtocol)
 	if err != nil {
 		log.Fatal("Error registering <DataCollectionProtocol>:", err)
 	}
