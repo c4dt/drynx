@@ -166,7 +166,7 @@ func surveyRun(c *cli.Context) error {
 		string(conf.Survey.Operation.Name), // operation
 		opMin,                              // lower bound of range
 		opMax,                              // upper bound of range
-		5,                                  // dimension for linear regression
+		len(*conf.Survey.Sources)-1,        // dimension for linear regression
 		0)                                  // "cutting factor", how much to remove of gen data[0:#/n]
 	if operation.NbrInput != len(*conf.Survey.Sources) {
 		return errors.New("Operation can't take #Sources")
