@@ -526,7 +526,7 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 		}
 		tree = generateDataCollectionRoster(s.ServerIdentity(), CNsToDPs).GenerateStar()
 	} else {
-		tree = tmp.SurveyQuery.RosterServers.GenerateNaryTreeWithRoot(2, s.ServerIdentity())
+		tree = tmp.SurveyQuery.RosterServers.GenerateBinaryTree()
 	}
 	if tree == nil {
 		return nil, errors.New("unable to generate tree")
