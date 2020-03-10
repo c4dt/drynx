@@ -11,9 +11,7 @@ import (
 
 	"github.com/ldsec/drynx/cmd"
 	libdrynx "github.com/ldsec/drynx/lib"
-	"github.com/ldsec/drynx/lib/operations"
 	"github.com/ldsec/drynx/services"
-	_ "github.com/ldsec/drynx/services"
 	kyber "go.dedis.ch/kyber/v3"
 	onet "go.dedis.ch/onet/v3"
 	onet_network "go.dedis.ch/onet/v3/network"
@@ -106,23 +104,6 @@ func surveySetOperation(c *cli.Context) error {
 	return conf.writeTo(os.Stdout)
 }
 
-func operationToOperation2(op cmd.Operation) (libdrynx.Operation2, error) {
-	switch op.Name {
-	case "frequencyCount":
-		if op.Range == nil {
-			return nil, errors.New("requires a range")
-		}
-		ret, err := operations.NewFrequencyCount(op.Range.Min, op.Range.Max)
-		return &ret, err
-	case "sum":
-		return operations.Sum{}, nil
-	case "cosim":
-		return operations.CosineSimilarity{}, nil
-	}
-
-	return nil, errors.New("unknown operation name")
-}
-
 func surveyRun(c *cli.Context) error {
 	if args := c.Args(); len(args) != 0 {
 		return errors.New("no args expected")
@@ -169,7 +150,7 @@ func surveyRun(c *cli.Context) error {
 		len(*conf.Survey.Sources)-1,        // dimension for linear regression
 		0)                                  // "cutting factor", how much to remove of gen data[0:#/n]
 	if operation.NbrInput != len(*conf.Survey.Sources) {
-		return errors.New("Operation can't take #Sources")
+		return errors.New("operation can't take #sources")
 	}
 
 	CNsToDPs := make(map[string]*libdrynx.ServerIdentityList)

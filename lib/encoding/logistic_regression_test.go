@@ -82,7 +82,7 @@ func TestComputeEncryptedApproxCoefficients(t *testing.T) {
 	actual := make([][]int64, k)
 
 	approxCoeffs := libdrynxencoding.Float64ToInt642DArray(libdrynxencoding.ComputeDistinctApproxCoefficients(X, y, k))
-	encryptedApproxCoeffs, _ := libdrynxencoding.ComputeEncryptedApproxCoefficients(approxCoeffs, pubKey)
+	libdrynxencoding.ComputeEncryptedApproxCoefficients(approxCoeffs, pubKey)
 
 	for j := 0; j < k; j++ {
 		expected[j] = approxCoeffs[j]
@@ -96,7 +96,7 @@ func TestComputeEncryptedApproxCoefficients(t *testing.T) {
 	k = 1
 
 	approxCoeffs = libdrynxencoding.Float64ToInt642DArray(libdrynxencoding.ComputeDistinctApproxCoefficients(X, y, k))
-	encryptedApproxCoeffs, _ = libdrynxencoding.ComputeEncryptedApproxCoefficients(approxCoeffs, pubKey)
+	encryptedApproxCoeffs, _ := libdrynxencoding.ComputeEncryptedApproxCoefficients(approxCoeffs, pubKey)
 
 	for j := 0; j < k; j++ {
 		expected[j] = libunlynx.DecryptIntVector(privKey, encryptedApproxCoeffs[j])

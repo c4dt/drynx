@@ -496,33 +496,26 @@ func ChooseOperation(operationName string, queryMin, queryMax, d int, cuttingFac
 	case "sum":
 		operation.NbrInput = 1
 		operation.NbrOutput = 1
-		break
 	case "mean":
 		operation.NbrInput = 1
 		operation.NbrOutput = 2
-		break
 	case "variance":
 		operation.NbrInput = 1
 		operation.NbrOutput = 3
-		break
 	case "cosim":
 		operation.NbrInput = 2
 		operation.NbrOutput = 5
-		break
 	case "frequencyCount", "min", "max", "union", "inter":
 		//NbrOutput should be equal to (QueryMax - QueryMin + 1)
 		operation.NbrInput = 1
 		operation.NbrOutput = queryMax - queryMin + 1
-		break
 	case "bool_OR", "bool_AND":
 		operation.NbrInput = 1
 		operation.NbrOutput = 1
-		break
 	case "lin_reg":
 		//NbrInput should be equal to d + 1, in the case of linear regression
 		operation.NbrInput = d + 1
 		operation.NbrOutput = (d*d + 5*d + 4) / 2
-		break
 	case "logistic regression":
 		break
 	default:

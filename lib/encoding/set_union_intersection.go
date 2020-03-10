@@ -30,7 +30,7 @@ func EncodeUnionWithProofs(input []int64, min int64, max int64, pubKey kyber.Poi
 	for _, entry := range uniqueValues {
 		go func(entry int64) {
 			defer wg.Done()
-			tmp := &libunlynx.CipherText{}
+			var tmp *libunlynx.CipherText
 			if sigs != nil {
 				tmp, cleartextTuples[entry-min], proofsTuples[entry-min] = EncodeBitOrWithProof(true, pubKey, libdrynxrange.ReadColumn(sigs, int(entry-min)), (*lu[entry-min]).Content[1], (*lu[entry-min]).Content[0])
 			} else {
@@ -46,7 +46,7 @@ func EncodeUnionWithProofs(input []int64, min int64, max int64, pubKey kyber.Poi
 		go func(i int64) {
 			defer wg1.Done()
 			if !filled[i] {
-				tmp := &libunlynx.CipherText{}
+				var tmp *libunlynx.CipherText
 				if sigs != nil {
 					tmp, cleartextTuples[i], proofsTuples[i] = EncodeBitOrWithProof(false, pubKey, libdrynxrange.ReadColumn(sigs, int(i)), (*lu[i]).Content[1], (*lu[i]).Content[0])
 				} else {
@@ -72,7 +72,7 @@ func DecodeUnion(result []libunlynx.CipherText, secKey kyber.Scalar) []int64 {
 			defer wg.Done()
 			bitI := DecodeBitOR(result[i], secKey)
 			//return the index of the rightmost 1-bit
-			if bitI == true {
+			if bitI {
 				outputVectors[i] = 1
 			} else {
 				outputVectors[i] = 0
@@ -102,7 +102,7 @@ func EncodeInterWithProofs(input []int64, min int64, max int64, pubKey kyber.Poi
 	for _, entry := range uniqueValues {
 		go func(entry int64) {
 			defer wg.Done()
-			tmp := &libunlynx.CipherText{}
+			var tmp *libunlynx.CipherText
 			if sigs != nil {
 				tmp, cleartextTuples[entry-min], proofsTuples[entry-min] = EncodeBitANDWithProof(true, pubKey, libdrynxrange.ReadColumn(sigs, int(entry-min)), (*lu[entry-min]).Content[1], (*lu[entry-min]).Content[0])
 			} else {
@@ -119,7 +119,7 @@ func EncodeInterWithProofs(input []int64, min int64, max int64, pubKey kyber.Poi
 		go func(i int64) {
 			defer wg1.Done()
 			if !filled[i] {
-				tmp := &libunlynx.CipherText{}
+				var tmp *libunlynx.CipherText
 				if sigs != nil {
 					tmp, cleartextTuples[i], proofsTuples[i] = EncodeBitANDWithProof(false, pubKey, libdrynxrange.ReadColumn(sigs, int(i)), (*lu[i]).Content[1], (*lu[i]).Content[0])
 				} else {
@@ -144,7 +144,7 @@ func DecodeInter(result []libunlynx.CipherText, secKey kyber.Scalar) []int64 {
 			defer wg.Done()
 			bitI := DecodeBitAND(result[i], secKey)
 			//return the index of the rightmost 1-bit
-			if bitI == true {
+			if bitI {
 				outputVectors[i] = 1
 			} else {
 				outputVectors[i] = 0

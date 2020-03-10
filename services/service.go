@@ -191,7 +191,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	survey.ShufflePrecompute, _ = libunlynxshuffle.PrecomputationWritingForShuffling(false, gobFile, s.ServerIdentity().String(), libunlynx.SuiTe.Scalar().Pick(random.New()), recq.RosterServers.Aggregate, lineSize)
 
 	// if is the root server: send query to all other servers and its data providers
-	if recq.IntraMessage == false {
+	if !recq.IntraMessage {
 		info("broadcasting [SurveyQuery] to CNs ")
 		recq.IntraMessage = true
 		// to other computing servers
@@ -220,7 +220,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	}
 
 	// DRO Phase
-	if recq.IntraMessage == false {
+	if !recq.IntraMessage {
 		go func() {
 			//diffPTimer := libDrynx.StartTimer(s.ServerIdentity().String() + "_DiffPPhase")
 			if libdrynx.AddDiffP(castToSurvey(s.Survey.Get(recq.SurveyID)).SurveyQuery.Query.DiffP) {
@@ -244,7 +244,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	}
 
 	// ready to start the collective aggregation & key switching protocol
-	if recq.IntraMessage == false {
+	if !recq.IntraMessage {
 		startJustExecution := libunlynx.StartTimer("JustExecution")
 		if err := s.StartService(recq.SurveyID); err != nil {
 			return nil, err
@@ -532,8 +532,7 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 		return nil, errors.New("unable to generate tree")
 	}
 
-	var tn *onet.TreeNodeInstance
-	tn = s.NewTreeNodeInstance(tree, tree.Root, name)
+	tn := s.NewTreeNodeInstance(tree, tree.Root, name)
 
 	conf := onet.GenericConfig{Data: []byte(string(targetSurvey))}
 	if err := tn.SetConfig(&conf); err != nil {
@@ -575,7 +574,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 	aggregationTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_AggregationPhase")
 	err := s.AggregationPhase(target.SurveyQuery.SurveyID)
 	if err != nil {
-		return fmt.Errorf("Aggregation Phase: %v", err)
+		return fmt.Errorf("aggregation phase: %v", err)
 	}
 	libunlynx.EndTimer(aggregationTimer)
 
@@ -583,7 +582,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 		//obfuscationTimer := libDrynx.StartTimer(s.ServerIdentity().String() + "_ObfuscationPhase")
 		err := s.ObfuscationPhase(target.SurveyQuery.SurveyID)
 		if err != nil {
-			return fmt.Errorf("Obfuscation Phase: %v", err)
+			return fmt.Errorf("obfuscation phase: %v", err)
 		}
 		//libDrynx.EndTimer(obfuscationTimer)
 	}
@@ -592,7 +591,7 @@ func (s *ServiceDrynx) StartService(targetSurvey string) error {
 	keySwitchTimer := libunlynx.StartTimer(s.ServerIdentity().String() + "_KeySwitchingPhase")
 	err = s.KeySwitchingPhase(target.SurveyQuery.SurveyID)
 	if err != nil {
-		return fmt.Errorf("Key Switching Phase: %v", err)
+		return fmt.Errorf("key switching phase: %v", err)
 	}
 	libunlynx.EndTimer(keySwitchTimer)
 

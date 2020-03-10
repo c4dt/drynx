@@ -51,10 +51,7 @@ func DecodeBitOR(result libunlynx.CipherText, secKey kyber.Scalar) bool {
 	//decrypt the bit representation
 	output := libunlynx.DecryptCheckZero(secKey, result)
 	//as per our convention, if R > 0, then the corresponding bit is a 1, else it is a 0
-	if output == int64(0) {
-		return false
-	}
-	return true
+	return output != int64(0)
 }
 
 // ExecuteBitAnd computes the result to encode, under the AND operation.
@@ -87,10 +84,7 @@ func DecodeBitAND(result libunlynx.CipherText, secKey kyber.Scalar) bool {
 	//decrypt the bit representation
 	output := libunlynx.DecryptCheckZero(secKey, result)
 	//as per our convention, if R > 0, then the corresponding bit is a 1, else it is a 0
-	if output == int64(0) {
-		return true
-	}
-	return false
+	return output == int64(0)
 }
 
 //LocalResultOR calculates the local result of the OR operation over all boolean values of the input array

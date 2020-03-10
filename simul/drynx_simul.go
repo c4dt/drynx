@@ -140,14 +140,12 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 	switch sim.Ranges {
 	case -1:
 		ranges = nil
-		break
 	case 16:
 		for i := range ranges {
 			u := int64(16)
 			l := int64(16)
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 99:
 		for i := range ranges {
 			var u, l int64
@@ -165,7 +163,6 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			}
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 100:
 		for i := range ranges {
 			var u, l int64
@@ -183,7 +180,6 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			}
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 101:
 		for i := range ranges {
 			var u, l int64
@@ -201,7 +197,6 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			}
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 102:
 		for i := range ranges {
 			var u, l int64
@@ -219,7 +214,6 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			}
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 103:
 		for i := range ranges {
 			var u, l int64
@@ -237,21 +231,18 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			}
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 1:
 		for i := range ranges {
 			u := int64(2)
 			l := int64(1)
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 0:
 		for i := range ranges {
 			u := int64(0)
 			l := int64(0)
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 17:
 		for i := range ranges {
 			u := int64(8)
@@ -277,14 +268,12 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 			l := int64(5)
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	case 19:
 		for i := range ranges {
 			u := int64(4)
 			l := int64(16)
 			ranges[i] = &libdrynx.Int64List{Content: []int64{u, l}}
 		}
-		break
 	}
 
 	// signatures for Input Validation
@@ -321,7 +310,7 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 		log.Fatal("The total number of servers must match the number of servers per data provider")
 	}
 
-	dpToServers := make(map[string]*[]network.ServerIdentity, 0)
+	dpToServers := make(map[string]*[]network.ServerIdentity)
 	dpIndex := 0
 	for _, v := range elServers {
 		if dpIndex < len(elDPs) {
@@ -362,10 +351,10 @@ func (sim *SimulationDrynx) Run(config *onet.SimulationConfig) error {
 	surveyID := uuid.NewV4().String()
 
 	var thresholdEntityProofsVerif []float64
-	if sim.Obfuscation == false {
-		thresholdEntityProofsVerif = []float64{sim.ThresholdGeneral, sim.ThresholdOther, sim.ThresholdOther, 0.0, sim.ThresholdOther}
-	} else {
+	if sim.Obfuscation {
 		thresholdEntityProofsVerif = []float64{sim.ThresholdGeneral, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther, sim.ThresholdOther}
+	} else {
+		thresholdEntityProofsVerif = []float64{sim.ThresholdGeneral, sim.ThresholdOther, sim.ThresholdOther, 0.0, sim.ThresholdOther}
 	}
 	sq := client.GenerateSurveyQuery(rosterServers, rosterVNs, dpToServers, idToPublic, surveyID, operation, ranges, ps, sim.Proofs, sim.Obfuscation, thresholdEntityProofsVerif, diffP, sim.CuttingFactor)
 	if !libdrynx.CheckParameters(sq, diffP.NoiseListSize > 0) {

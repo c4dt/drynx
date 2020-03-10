@@ -221,9 +221,7 @@ func FindMinimumWeightsLinearRegression(initialWeights []float64, X [][]float64,
 
 		if cost >= 0.0 {
 			minCost = cost
-			for i := range weights {
-				minWeights[i] = weights[i]
-			}
+			copy(minWeights, weights)
 		}
 
 		gradient := GradientLinearRegression(weights, X, y, lambda)

@@ -275,15 +275,12 @@ func (p *ObfuscationProtocol) ascendingObfuscationPhase() (libunlynx.CipherVecto
 	}
 
 	if !p.IsLeaf() {
+		var length []ObfuscationLengthStruct
+		length = append(length, <-p.LengthNodeChannel...)
 
-		length := make([]ObfuscationLengthStruct, 0)
-		for _, v := range <-p.LengthNodeChannel {
-			length = append(length, v)
-		}
-		datas := make([]ObfuscationUpBytesStruct, 0)
-		for _, v := range <-p.ChildDataChannel {
-			datas = append(datas, v)
-		}
+		var datas []ObfuscationUpBytesStruct
+		datas = append(datas, <-p.ChildDataChannel...)
+
 		for i, v := range length {
 			childrenContribution := libunlynx.NewCipherVector(v.Length)
 			childrenContribution.FromBytes(datas[i].Data, v.Length)

@@ -31,7 +31,7 @@ func EncodeMinWithProofs(input []int64, max int64, min int64, pubKey kyber.Point
 			if i >= localMin {
 				val = true
 			}
-			tmp := &libunlynx.CipherText{}
+			var tmp *libunlynx.CipherText
 			if sigs != nil {
 				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitOrWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min]).Content[1], (*lu[i-min]).Content[0])
 			} else {
@@ -69,7 +69,7 @@ func DecodeMin(result []libunlynx.CipherText, globalMin int64, secKey kyber.Scal
 
 	for i := int64(0); i < int64(len(result)); i++ {
 		//return the index of the rightmost 1-bit
-		if bitIs[i] == true {
+		if bitIs[i] {
 			min = i + globalMin
 			break
 		}
@@ -105,7 +105,7 @@ func EncodeMaxWithProofs(input []int64, max int64, min int64, pubKey kyber.Point
 			if i >= localMax {
 				val = true
 			}
-			tmp := &libunlynx.CipherText{}
+			var tmp *libunlynx.CipherText
 			if sigs != nil {
 				tmp, cleartextTuples[i-min], proofsTuples[i-min] = EncodeBitANDWithProof(val, pubKey, libdrynxrange.ReadColumn(sigs, int(i-min)), (*lu[i-min]).Content[1], (*lu[i-min]).Content[0])
 			} else {
@@ -137,7 +137,7 @@ func DecodeMax(result []libunlynx.CipherText, globalMin int64, secKey kyber.Scal
 
 	for i := int64(0); i < int64(len(result)); i++ {
 		//return the index of the rightmost 1-bit
-		if bitIs[i] == true {
+		if bitIs[i] {
 			max = i + globalMin
 			break
 		}

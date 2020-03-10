@@ -46,7 +46,7 @@ func EncodeLogisticRegression(xData [][]float64, yData []int64, lrParameters lib
 	aggregatedApproxCoefficientsIntPacked := make([]int64, n)
 	encryptedAggregatedApproxCoefficients := make([]libunlynx.CipherText, n)
 
-	if xData != nil && len(xData) > 0 {
+	if len(xData) > 0 {
 		// unpack the data into features and labels
 		/*labelColumn := 0
 		X := RemoveColumn(data, labelColumn)
@@ -125,7 +125,7 @@ func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrPara
 	encryptedAggregatedApproxCoefficients := make([]CipherAndRandom, n)
 	encryptedAggregatedApproxCoefficientsOnlyCipher := make([]libunlynx.CipherText, n)
 
-	if xData != nil && len(xData) > 0 {
+	if len(xData) > 0 {
 		// unpack the data into features and labels
 		/*labelColumn := 0
 		X := RemoveColumn(data, labelColumn)
@@ -705,9 +705,7 @@ func FindMinimumWeights(approxCoefficients [][]float64, initialWeights []float64
 		//if cost >= 0.0 && cost < minCost {
 		if cost >= 0.0 {
 			minCost = cost
-			for i := range weights {
-				minWeights[i] = weights[i]
-			}
+			copy(minWeights, weights)
 		}
 
 		gradient := Gradient(weights, approxCoefficients, k, N, lambda)
@@ -1050,16 +1048,6 @@ func Augment(matrix [][]float64) [][]float64 {
 	return matrix
 }
 
-// returns the given 2D array flattened into a 1D array
-func flatten(matrix [][]float64) []float64 {
-	var array []float64
-	for i := range matrix {
-		array = append(array, matrix[i]...)
-	}
-
-	return array
-}
-
 // InsertColumn returns a new 2D array with the column <column> inserted into the given 2D array <matrix> at index <idx>
 func InsertColumn(matrix [][]float64, column []float64, idx int) [][]float64 {
 	newMatrix := make([][]float64, len(matrix))
@@ -1224,25 +1212,6 @@ func AreaUnderCurve(predicted []float64, actual []int64) float64 {
 		panic(err)
 	}
 }*/
-
-// SaveToFile saves a float64 array to file
-func SaveToFile(array []float64, filename string) {
-	file, err := os.OpenFile(filename, os.O_APPEND, 0666)
-
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(2)
-	}
-
-	for j := 0; j < len(array)-1; j++ {
-		_, err = file.WriteString(fmt.Sprint(array[j]) + ",")
-	}
-	_, err = file.WriteString(fmt.Sprintln(array[len(array)-1]))
-
-	if err := file.Close(); err != nil {
-		log.Fatal("Error closing file:", err)
-	}
-}
 
 // PrintForLatex for copy-pasting in LaTex
 func PrintForLatex(accuracy, precision, recall, fscore, auc float64) {

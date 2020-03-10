@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -29,7 +30,7 @@ func (f fileLoader) Provide(query libdrynx.Query) ([][]float64, error) {
 		return nil, errors.New("malformed query")
 	}
 
-	_, err := f.file.Seek(0, os.SEEK_SET)
+	_, err := f.file.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err
 	}

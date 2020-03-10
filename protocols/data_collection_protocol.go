@@ -126,7 +126,7 @@ func (p *DataCollectionProtocol) Dispatch() error {
 		}
 	} else {
 		// 3. If root wait for all other nodes to send their data
-		dcmAggregate := make(map[string]libunlynx.CipherVector, 0)
+		dcmAggregate := make(map[string]libunlynx.CipherVector, len(p.Children()))
 		for i := 0; i < len(p.Tree().List())-1; i++ {
 			dcm := <-p.DataCollectionChannel
 			dcmData := dcm.DCMdata
@@ -247,7 +247,7 @@ func (p *DataCollectionProtocol) GenerateData() libdrynx.ResponseDPBytes {
 	cprf := make([]libdrynxrange.CreateProof, 0)
 
 	// compute response
-	queryResponse := make(map[string]libunlynx.CipherVector, 0)
+	queryResponse := make(map[string]libunlynx.CipherVector, len(groupsString))
 
 	// for all different groups
 	for _, v := range groupsString {

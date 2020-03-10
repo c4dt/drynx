@@ -83,7 +83,9 @@ func (kp keyPairStr) toSafe() (kyber_key.Pair, error) {
 
 func readConfigFrom(r io.Reader) (config, error) {
 	var conf configStr
-	err := toml.NewDecoder(r).Decode(&conf)
+	if err := toml.NewDecoder(r).Decode(&conf); err != nil {
+		return config{}, err
+	}
 
 	key, err := conf.Key.toSafe()
 	if err != nil {

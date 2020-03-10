@@ -23,7 +23,11 @@ func NewFrequencyCount(min, max int) (FrequencyCount, error) {
 	if min > max {
 		return FrequencyCount{}, errors.New("given minimum is greater than maximum")
 	}
-	return FrequencyCount{Range{min, max}}, nil
+	r, err := NewRange(min, max)
+	if err != nil {
+		return FrequencyCount{}, err
+	}
+	return FrequencyCount{r}, nil
 }
 
 // ExecuteOnProvider encodes.

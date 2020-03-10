@@ -61,7 +61,7 @@ func repartitionDPs(elServers *onet.Roster, elDPs *onet.Roster, dpRepartition []
 		log.Fatal("Cannot assign the DPs to", len(dpRepartition), "servers (", len(elServers.List), ")")
 	}
 
-	dpToServers := make(map[string]*[]network.ServerIdentity, 0)
+	dpToServers := make(map[string]*[]network.ServerIdentity, len(elServers.List))
 	count := 0
 	for i, v := range elServers.List {
 		index := v.String()
@@ -99,7 +99,7 @@ func TestServiceDrynx(t *testing.T) {
 
 	//operationList := []string{"sum", "frequencyCount", "mean", "variance", "cosim", "frequencyCount", "bool_AND", "bool_OR", "min", "max", "lin_reg", "union", "inter"}
 	operationList := []string{"sum", "frequencyCount"}
-	thresholdEntityProofsVerif := []float64{1.0, 1.0, 1.0, 1.0, 1.0} // 1: threshold general, 2: threshold aggregation, 3: threshold range, 4: obfuscation, 5: threshold key switch
+	var thresholdEntityProofsVerif []float64
 	//------------------------
 
 	if proofs == 1 {
@@ -743,7 +743,7 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 	//repartition
 	dpRepartition := []int64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	//dpRepartition := []int64{1}
-	dpToServers := make(map[string]*[]network.ServerIdentity, 0)
+	dpToServers := make(map[string]*[]network.ServerIdentity, len(el.List))
 	count := 0
 	for i, v := range el.List {
 		index := v.String()

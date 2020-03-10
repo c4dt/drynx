@@ -371,8 +371,7 @@ func (s *ServiceDrynx) NewProofCollectionProtocolInstance(tn *onet.TreeNodeInsta
 
 // CreateProofCollectionPIs create a set of ProofCollection protocol instances to be used in the protocols: Aggregation, Shuffle, ...
 func (s *ServiceDrynx) CreateProofCollectionPIs(tree *onet.Tree, targetSurvey, name string) (onet.ProtocolInstance, error) {
-	var tn *onet.TreeNodeInstance
-	tn = s.NewTreeNodeInstance(tree, tree.Root, protocols.ProofCollectionProtocolName)
+	tn := s.NewTreeNodeInstance(tree, tree.Root, protocols.ProofCollectionProtocolName)
 
 	conf := onet.GenericConfig{Data: []byte(targetSurvey)}
 	if err := tn.SetConfig(&conf); err != nil {
@@ -400,7 +399,7 @@ func (s *ServiceDrynx) verifyFuncBitmap(newID []byte, newSB *skipchain.SkipBlock
 	//Get data of the newBlock
 	_, msg, err := network.Unmarshal(newSB.Data, libunlynx.SuiTe)
 	if err != nil {
-		log.Fatal("Error in Verify Bitmap")
+		log.Fatal("Error in Verify Bitmap", err)
 		return false
 	}
 
@@ -421,6 +420,10 @@ func (s *ServiceDrynx) verifyFuncBitmap(newID []byte, newSB *skipchain.SkipBlock
 		bitMapFromServ = result.BitMap
 		return nil
 	})
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
 
 	//Compare the bitmap you get from DB to all bitmap Stored in Block
 	for i, v := range bitMapFromServ {
@@ -439,12 +442,8 @@ func (s *ServiceDrynx) verifyFuncBitmap(newID []byte, newSB *skipchain.SkipBlock
 //______________________________________________________________________________________________________________________
 
 func generateProofCollectionRoster(root *network.ServerIdentity, rosterVNs *onet.Roster) *onet.Roster {
-	roster := make([]*network.ServerIdentity, 0)
-	roster = append(roster, root)
-
-	for _, vn := range rosterVNs.List {
-		roster = append(roster, vn)
-	}
+	roster := []*network.ServerIdentity{root}
+	roster = append(roster, rosterVNs.List...)
 	return onet.NewRoster(roster)
 }
 

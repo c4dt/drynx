@@ -27,11 +27,10 @@ import (
 )
 
 type nodeTools struct {
-	request     *concurrent.ConcurrentMap
-	dataOfBlock *concurrent.ConcurrentMap
-	dbPath      string
-	db          *bbolt.DB
-	mutex       *sync.Mutex
+	request *concurrent.ConcurrentMap
+	dbPath  string
+	db      *bbolt.DB
+	mutex   *sync.Mutex
 }
 
 var nodeToolsMap map[string]*nodeTools

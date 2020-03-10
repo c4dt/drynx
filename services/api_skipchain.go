@@ -43,10 +43,10 @@ func (c *API) SendEndVerification(si *network.ServerIdentity, queryInfoID string
 // SendGetLatestBlock requests the last known block of the skipchain
 func (c *API) SendGetLatestBlock(roster *onet.Roster, sb *skipchain.SkipBlock) (*skipchain.SkipBlock, error) {
 	if roster == nil {
-		return nil, errors.New("No roster provided")
+		return nil, errors.New("no roster provided")
 	}
 	if sb == nil {
-		return nil, errors.New("No block provided")
+		return nil, errors.New("no block provided")
 	}
 
 	reply := &libdrynx.Reply{}

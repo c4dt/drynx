@@ -11,14 +11,14 @@ import (
 // Encode takes care of computing the query result and encode it for all possible operations.
 func Encode(datas [][]int64, pubKey kyber.Point, signatures [][]libdrynx.PublishSignature, ranges []*libdrynx.Int64List, operation libdrynx.Operation) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
 
-	clearResponse := make([]int64, 0)
+	var clearResponse []int64
 	encryptedResponse := make([]libunlynx.CipherText, 0)
 	createPrf := make([]libdrynxrange.CreateProof, 0)
 	withProofs := len(ranges) > 0 && len(signatures) > 0
 
 	switch operation.NameOp {
 	case "sum":
-		tmpEncryptedResponse := &libunlynx.CipherText{}
+		var tmpEncryptedResponse *libunlynx.CipherText
 		tmpPrfs := make([]libdrynxrange.CreateProof, 0)
 		if withProofs {
 			tmpEncryptedResponse, clearResponse, tmpPrfs = EncodeSumWithProofs(datas[0], pubKey, signatures[0], (*ranges[0]).Content[1], (*ranges[0]).Content[0])
@@ -27,28 +27,24 @@ func Encode(datas [][]int64, pubKey kyber.Point, signatures [][]libdrynx.Publish
 		}
 		encryptedResponse = []libunlynx.CipherText{*tmpEncryptedResponse}
 		createPrf = tmpPrfs
-		break
 	case "cosim":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeCosimWithProofs(datas[0], datas[1], pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeCosim(datas[0], datas[1], pubKey)
 		}
-		break
 	case "mean":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeMeanWithProofs(datas[0], pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeMean(datas[0], pubKey)
 		}
-		break
 	case "variance":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeVarianceWithProofs(datas[0], pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeVariance(datas[0], pubKey)
 		}
-		break
 	case "lin_reg":
 		d := len(datas)
 		numbValues := len(datas[0])
@@ -65,27 +61,22 @@ func Encode(datas [][]int64, pubKey kyber.Point, signatures [][]libdrynx.Publish
 
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeLinearRegressionDimsWithProofs(dataDimensions, dataYS, pubKey, signatures, ranges)
-			encryptedResponse, clearResponse, createPrf = EncodeLinearRegressionDimsWithProofs(dataDimensions, dataYS, pubKey, signatures, ranges)
-
 		} else {
 			encryptedResponse, clearResponse = EncodeLinearRegressionDims(dataDimensions, dataYS, pubKey)
 		}
-		break
 	case "frequencyCount":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeFreqCountWithProofs(datas[0], operation.QueryMin, operation.QueryMax, pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeFreqCount(datas[0], operation.QueryMin, operation.QueryMax, pubKey)
 		}
-		break
-
 	case "bool_AND":
 		booleanBit := false
 		if datas[0][0] == 1 {
 			booleanBit = true
 		}
-		cipher := &libunlynx.CipherText{}
-		clear := int64(0)
+		var cipher *libunlynx.CipherText
+		var clear int64
 
 		if withProofs {
 			prf := libdrynxrange.CreateProof{}
@@ -96,15 +87,13 @@ func Encode(datas [][]int64, pubKey kyber.Point, signatures [][]libdrynx.Publish
 		}
 		encryptedResponse = []libunlynx.CipherText{*cipher}
 		clearResponse = []int64{clear}
-		break
-
 	case "bool_OR":
 		booleanBit := false
 		if datas[0][0] == 1 {
 			booleanBit = true
 		}
-		cipher := &libunlynx.CipherText{}
-		clear := int64(0)
+		var cipher *libunlynx.CipherText
+		var clear int64
 
 		if withProofs {
 			prf := libdrynxrange.CreateProof{}
@@ -115,32 +104,24 @@ func Encode(datas [][]int64, pubKey kyber.Point, signatures [][]libdrynx.Publish
 		}
 		encryptedResponse = []libunlynx.CipherText{*cipher}
 		clearResponse = []int64{clear}
-		break
-
 	case "min":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeMinWithProofs(datas[0], operation.QueryMax, operation.QueryMin, pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeMin(datas[0], operation.QueryMax, operation.QueryMin, pubKey)
 		}
-
-		break
-
 	case "max":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeMaxWithProofs(datas[0], operation.QueryMax, operation.QueryMin, pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeMax(datas[0], operation.QueryMax, operation.QueryMin, pubKey)
 		}
-		break
-
 	case "union":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeUnionWithProofs(datas[0], operation.QueryMin, operation.QueryMax, pubKey, signatures, ranges)
 		} else {
 			encryptedResponse, clearResponse = EncodeUnion(datas[0], operation.QueryMin, operation.QueryMax, pubKey)
 		}
-		break
 	case "inter":
 		if withProofs {
 			encryptedResponse, clearResponse, createPrf = EncodeInterWithProofs(datas[0], operation.QueryMin, operation.QueryMax, pubKey, signatures, ranges)

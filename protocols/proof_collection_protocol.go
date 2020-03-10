@@ -2,8 +2,10 @@ package protocols
 
 import (
 	"errors"
-	"github.com/ldsec/drynx/lib/proof"
+	"fmt"
 	"sync"
+
+	"github.com/ldsec/drynx/lib/proof"
 
 	"github.com/coreos/bbolt"
 	"github.com/fanliao/go-concurrentMap"
@@ -47,7 +49,6 @@ type BitmapCollectionMessage struct {
 	ID     string
 	New    bool
 	Roster *onet.Roster
-	sbHash skipchain.SkipBlockID
 }
 
 // ReplyPCMessage bitmap message
@@ -197,6 +198,9 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 		// verify which type of proof it is
 		if p.Proof.RangeProof != nil {
 			verif, err = p.Proof.RangeProof.VerifyProof(*p.ServerIdentity(), p.SQ)
+			if err != nil {
+				return err
+			}
 			// store range proof list in db and skipchain (transaction)
 			sb, err = p.storeProof(
 				0,
@@ -212,6 +216,9 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 
 		} else if p.Proof.AggregationProof != nil {
 			verif, err = p.Proof.AggregationProof.VerifyProof(*p.ServerIdentity(), p.SQ)
+			if err != nil {
+				return err
+			}
 			// store aggregation proof in db and skipchain (transaction)
 			sb, err = p.storeProof(
 				1,
@@ -227,6 +234,9 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 
 		} else if p.Proof.ObfuscationProof != nil {
 			verif, err = p.Proof.ObfuscationProof.VerifyProof(*p.ServerIdentity(), p.SQ)
+			if err != nil {
+				return err
+			}
 			// store aggregation proof in db and skipchain (transaction)
 			sb, err = p.storeProof(
 				2,
@@ -242,6 +252,9 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 
 		} else if p.Proof.ShuffleProof != nil {
 			verif, err = p.Proof.ShuffleProof.VerifyProof(*p.ServerIdentity(), p.SQ)
+			if err != nil {
+				return err
+			}
 			// store shuffle proof in db and skipchain (transaction)
 			sb, err = p.storeProof(
 				3,
@@ -257,7 +270,9 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 
 		} else if p.Proof.KeySwitchProof != nil {
 			verif, err = p.Proof.KeySwitchProof.VerifyProof(*p.ServerIdentity(), p.SQ)
-
+			if err != nil {
+				return err
+			}
 			// store key switch proof in db and skipchain (transaction)
 			sb, err = p.storeProof(
 				4,
@@ -276,7 +291,7 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 		}
 
 		if err != nil {
-			log.Fatal("Error when verifying the proof:", err)
+			return fmt.Errorf("when verifying the proof: %v", err)
 		}
 
 		dcm := ProofCollectionMessage{Result: verif, SB: sb}
