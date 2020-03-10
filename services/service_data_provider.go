@@ -15,6 +15,13 @@ import (
 
 // HandleSurveyQueryToDP handles the reception of a query at a DP
 func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (network.Message, error) {
+	_, err := s.Survey.Put(recq.SQ.SurveyID, Survey{
+		SurveyQuery: recq.SQ,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// only generate ProofCollection protocol instances if proofs is enabled
 	var mapPIs map[string]onet.ProtocolInstance
 	if recq.SQ.Query.Proofs != 0 {
@@ -25,7 +32,7 @@ func (s *ServiceDrynx) HandleSurveyQueryToDP(recq *libdrynx.SurveyQueryToDP) (ne
 		}
 	}
 
-	_, err := s.Survey.Put(recq.SQ.SurveyID, Survey{
+	_, err = s.Survey.Put(recq.SQ.SurveyID, Survey{
 		SurveyQuery: recq.SQ,
 		MapPIs:      mapPIs,
 	})

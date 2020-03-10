@@ -22,6 +22,7 @@ import (
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
+	"go.dedis.ch/protobuf"
 	"sync"
 	"time"
 )
@@ -165,6 +166,14 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 		}
 	}
 
+	// survey instantiation
+	_, err := s.Survey.Put(recq.SurveyID, Survey{
+		SurveyQuery: *recq,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// only generate ProofCollection protocol instances if proofs is enabled
 	var mapPIs map[string]onet.ProtocolInstance
 	if recq.Query.Proofs != 0 {
@@ -176,7 +185,7 @@ func (s *ServiceDrynx) HandleSurveyQuery(recq *libdrynx.SurveyQuery) (network.Me
 	}
 
 	// survey instantiation
-	_, err := s.Survey.Put(recq.SurveyID, Survey{
+	_, err = s.Survey.Put(recq.SurveyID, Survey{
 		SurveyQuery: *recq,
 		MapPIs:      mapPIs,
 	})
@@ -282,7 +291,11 @@ func (s *ServiceDrynx) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 		return nil, errors.New("conf is nil")
 	}
 
-	target := string(conf.Data)
+	var survey Survey
+	if err := protobuf.Decode(conf.Data, &survey); err != nil {
+		return nil, err
+	}
+	target := survey.SurveyQuery.SurveyID
 
 	switch tn.ProtocolName() {
 	case protocols.ProofCollectionProtocolName:
@@ -534,7 +547,13 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 
 	tn := s.NewTreeNodeInstance(tree, tree.Root, name)
 
-	conf := onet.GenericConfig{Data: []byte(string(targetSurvey))}
+	survey := s.waitForSurvey(targetSurvey)
+	survey.MapPIs = nil
+	encoded, err := protobuf.Encode(&survey)
+	if err != nil {
+		return nil, err
+	}
+	conf := onet.GenericConfig{Data: encoded}
 	if err := tn.SetConfig(&conf); err != nil {
 		return nil, err
 	}

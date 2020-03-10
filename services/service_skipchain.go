@@ -15,6 +15,7 @@ import (
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
+	"go.dedis.ch/protobuf"
 	"gopkg.in/satori/go.uuid.v1"
 )
 
@@ -373,7 +374,13 @@ func (s *ServiceDrynx) NewProofCollectionProtocolInstance(tn *onet.TreeNodeInsta
 func (s *ServiceDrynx) CreateProofCollectionPIs(tree *onet.Tree, targetSurvey, name string) (onet.ProtocolInstance, error) {
 	tn := s.NewTreeNodeInstance(tree, tree.Root, protocols.ProofCollectionProtocolName)
 
-	conf := onet.GenericConfig{Data: []byte(targetSurvey)}
+	survey := s.waitForSurvey(targetSurvey)
+	survey.MapPIs = nil
+	encoded, err := protobuf.Encode(&survey)
+	if err != nil {
+		return nil, err
+	}
+	conf := onet.GenericConfig{Data: encoded}
 	if err := tn.SetConfig(&conf); err != nil {
 		return nil, err
 	}
