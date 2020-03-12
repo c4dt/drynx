@@ -55,7 +55,8 @@ func TestProofCollectionProtocol(t *testing.T) {
 	defer local.CloseAll()
 
 	onet.GlobalProtocolRegister("ProofCollectionTest", NewProofCollectionTest)
-	_, el, tree := local.GenTree(4, true)
+	_, el, _ := local.GenTree(4, true)
+	tree := el.GenerateStar()
 
 	senderID := el.List[0].String()
 
@@ -313,6 +314,9 @@ func generateTestSurveyQuery(surveyID string, el *onet.Roster, idToPublic map[st
 // NewProofCollectionTest is a test specific protocol instance constructor that injects test data.
 func NewProofCollectionTest(tni *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
 	pi, err := NewProofCollectionProtocol(tni)
+	if err != nil {
+		return nil, err
+	}
 	protocol := pi.(*ProofCollectionProtocol)
 
 	if !tni.IsRoot() {

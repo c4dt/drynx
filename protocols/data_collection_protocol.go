@@ -1,7 +1,11 @@
 package protocols
 
 import (
+	"errors"
 	"fmt"
+	"math/rand"
+	"sync"
+
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/encoding"
 	"github.com/ldsec/drynx/lib/proof"
@@ -13,8 +17,6 @@ import (
 	"go.dedis.ch/kyber/v3/pairing/bn256"
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
-	"math/rand"
-	"sync"
 )
 
 // DataCollectionProtocolName is the registered name for the data provider protocol.
@@ -80,6 +82,10 @@ type DataCollectionProtocol struct {
 
 // NewDataCollectionProtocol constructs a DataCollection protocol instance
 func NewDataCollectionProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
+	if n.IsRoot() && len(n.Children()) != n.Tree().Size()-1 {
+		return nil, errors.New("works only with a star tree")
+	}
+
 	p := &DataCollectionProtocol{
 		TreeNodeInstance: n,
 		FeedbackChannel:  make(chan map[string]libunlynx.CipherVector),
@@ -100,15 +106,7 @@ func NewDataCollectionProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance,
 func (p *DataCollectionProtocol) Start() error {
 	log.Lvl2("["+p.Name()+"]", "starts a Data Collection Protocol.")
 
-	for _, node := range p.Tree().List() {
-		// the root node sends an announcement message to all the nodes
-		if !node.IsRoot() {
-			if err := p.SendTo(node, &AnnouncementDCMessage{}); err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-	return nil
+	return p.SendToChildren(&AnnouncementDCMessage{})
 }
 
 // Dispatch is called on each tree node. It waits for incoming messages and handles them.
@@ -121,38 +119,37 @@ func (p *DataCollectionProtocol) Dispatch() error {
 		dcm := DataCollectionMessage{DCMdata: response}
 
 		// 2. Send data to root
-		if err := p.SendTo(p.Root(), &dcm); err != nil {
-			return err
-		}
-	} else {
-		// 3. If root wait for all other nodes to send their data
-		dcmAggregate := make(map[string]libunlynx.CipherVector, len(p.Children()))
-		for i := 0; i < len(p.Tree().List())-1; i++ {
-			dcm := <-p.DataCollectionChannel
-			dcmData := dcm.DCMdata
-
-			// received map with bytes -> go back to map with CipherVector
-			dcmDecoded := make(map[string]libunlynx.CipherVector, len(dcmData.Data))
-			for i, v := range dcmData.Data {
-				cv := libunlynx.NewCipherVector(dcmData.Len)
-				cv.FromBytes(v, dcmData.Len)
-				dcmDecoded[i] = *cv
-			}
-
-			// aggregate values that belong to the same group (that are originated from different data providers)
-			for key, value := range dcmDecoded {
-				// if already in the map -> add to what is inside
-				if cv, ok := dcmAggregate[key]; ok {
-					newCV := libunlynx.NewCipherVector(len(cv))
-					newCV.Add(cv, value)
-					dcmAggregate[key] = *newCV
-				} else { // otherwise create a new entry
-					dcmAggregate[key] = value
-				}
-			}
-		}
-		p.FeedbackChannel <- dcmAggregate
+		return p.SendToParent(&dcm)
 	}
+
+	// 3. If root wait for all other nodes to send their data
+	dcmAggregate := make(map[string]libunlynx.CipherVector, len(p.Children()))
+	for i := 0; i < len(p.Tree().List())-1; i++ {
+		dcm := <-p.DataCollectionChannel
+		dcmData := dcm.DCMdata
+
+		// received map with bytes -> go back to map with CipherVector
+		dcmDecoded := make(map[string]libunlynx.CipherVector, len(dcmData.Data))
+		for i, v := range dcmData.Data {
+			cv := libunlynx.NewCipherVector(dcmData.Len)
+			cv.FromBytes(v, dcmData.Len)
+			dcmDecoded[i] = *cv
+		}
+
+		// aggregate values that belong to the same group (that are originated from different data providers)
+		for key, value := range dcmDecoded {
+			// if already in the map -> add to what is inside
+			if cv, ok := dcmAggregate[key]; ok {
+				newCV := libunlynx.NewCipherVector(len(cv))
+				newCV.Add(cv, value)
+				dcmAggregate[key] = *newCV
+			} else { // otherwise create a new entry
+				dcmAggregate[key] = value
+			}
+		}
+	}
+
+	p.FeedbackChannel <- dcmAggregate
 	return nil
 }
 

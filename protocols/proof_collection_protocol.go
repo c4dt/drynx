@@ -128,6 +128,10 @@ func CastToQueryInfo(object interface{}, err error) *libdrynx.QueryInfo {
 
 // NewProofCollectionProtocol constructs a ProofCollection protocol instance.
 func NewProofCollectionProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
+	if n.IsRoot() && len(n.Children()) != n.Tree().Size()-1 {
+		return nil, errors.New("works only with a star tree")
+	}
+
 	pcp := &ProofCollectionProtocol{
 		TreeNodeInstance: n,
 		FeedbackChannel:  make(chan ReplyPCMessage),
@@ -168,16 +172,7 @@ func (p *ProofCollectionProtocol) Start() error {
 		log.Fatal("Did not recognise the type of proof")
 	}
 
-	for _, node := range p.Tree().List() {
-		// the root node sends an announcement message to all the nodes
-		if !node.IsRoot() {
-			if err := p.SendTo(node, &AnnouncementPCMessage{Proof: p.Proof}); err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-
-	return nil
+	return p.SendToChildren(&AnnouncementPCMessage{Proof: p.Proof})
 }
 
 // Dispatch is called on each tree node. It waits for incoming messages and handles them.
@@ -295,26 +290,25 @@ func (p *ProofCollectionProtocol) Dispatch() error {
 		}
 
 		dcm := ProofCollectionMessage{Result: verif, SB: sb}
-		// 2. Send message to root
-		if err := p.SendTo(p.Root(), &dcm); err != nil {
-			return err
-		}
-	} else {
-		// 3. If root wait for all the verifying nodes to process the proofs
-		bitmap := make(map[string]int64)
-		finalRes := ReplyPCMessage{Bitmap: bitmap}
 
-		for i := 0; i < len(p.Tree().List())-1; i++ {
-			res := <-p.ProofCollectionChannel
-
-			finalRes.Bitmap[res.ServerIdentity.String()] = res.Result
-
-			if res.SB != nil {
-				finalRes.SB = res.SB
-			}
-		}
-		p.FeedbackChannel <- finalRes
+		// 2. Send message to parent
+		return p.SendToParent(&dcm)
 	}
+
+	// 3. If root wait for all the verifying nodes to process the proofs
+	bitmap := make(map[string]int64)
+	finalRes := ReplyPCMessage{Bitmap: bitmap}
+
+	for range p.Children() {
+		res := <-p.ProofCollectionChannel
+
+		finalRes.Bitmap[res.ServerIdentity.String()] = res.Result
+
+		if res.SB != nil {
+			finalRes.SB = res.SB
+		}
+	}
+	p.FeedbackChannel <- finalRes
 
 	return nil
 }

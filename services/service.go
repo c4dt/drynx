@@ -531,16 +531,20 @@ func (s *ServiceDrynx) StartProtocol(name string, targetSurvey string) (onet.Pro
 	// this generates the PIs of proof collection to be run inside the protocols
 	tmp := castToSurvey(s.Survey.Get((string)(targetSurvey)))
 
-	var tree *onet.Tree
-	if name == protocols.DataCollectionProtocolName {
-		CNsToDPs := make(map[string]*[]network.ServerIdentity)
-		for cn, dps := range tmp.SurveyQuery.ServerToDP {
-			CNsToDPs[cn] = &dps.Content
+	tree := func() *onet.Tree {
+		switch name {
+		case protocols.DataCollectionProtocolName:
+			CNsToDPs := make(map[string]*[]network.ServerIdentity)
+			for cn, dps := range tmp.SurveyQuery.ServerToDP {
+				CNsToDPs[cn] = &dps.Content
+			}
+			return generateDataCollectionRoster(s.ServerIdentity(), CNsToDPs).GenerateStar()
+		case protocols.ProofCollectionProtocolName:
+			return tmp.SurveyQuery.RosterServers.GenerateStar()
+		default:
+			return tmp.SurveyQuery.RosterServers.GenerateBinaryTree()
 		}
-		tree = generateDataCollectionRoster(s.ServerIdentity(), CNsToDPs).GenerateStar()
-	} else {
-		tree = tmp.SurveyQuery.RosterServers.GenerateBinaryTree()
-	}
+	}()
 	if tree == nil {
 		return nil, errors.New("unable to generate tree")
 	}

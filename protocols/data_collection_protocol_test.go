@@ -49,7 +49,8 @@ func TestDataCollectionOperationsProtocol(t *testing.T) {
 	if _, err := onet.GlobalProtocolRegister("DataCollectionTest", NewDataCollectionTest); err != nil {
 		log.Fatal("Failed to register the <DataCollectionTest> protocol:", err)
 	}
-	_, _, tree := local.GenTree(10, true)
+	_, roster, _ := local.GenTree(10, true)
+	tree := roster.GenerateStar()
 
 	operationList := []string{"sum", "mean", "variance", "cosim", "frequencyCount", "bool_AND", "bool_OR", "min", "max", "lin_reg"}
 	keys := key.NewKeyPair(libunlynx.SuiTe)
