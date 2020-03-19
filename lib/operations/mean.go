@@ -39,7 +39,7 @@ func (Mean) ExecuteOnProvider(key kyber.Point, loaded [][]float64) (libunlynx.Ci
 	}
 
 	// TODO add support for proof
-	encoded, _ := libdrynxencoding.EncodeMean(floatsToInts(loaded[0]), key)
+	encoded, _ := libdrynxencoding.EncodeMean(floats1DToInts(loaded[0]), key)
 	return libunlynx.CipherVector(encoded), nil
 }
 

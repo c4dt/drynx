@@ -14,34 +14,30 @@ import (
 )
 
 //EncodeLinearRegressionDims implements a d-dimensional linear regression algorithm on the query results
-func EncodeLinearRegressionDims(input1 [][]int64, input2 []int64, pubKey kyber.Point) ([]libunlynx.CipherText, []int64) {
-	resultEnc, resultClear, _ := EncodeLinearRegressionDimsWithProofs(input1, input2, pubKey, nil, nil)
+func EncodeLinearRegressionDims(datas [][]int64, pubKey kyber.Point) ([]libunlynx.CipherText, []int64) {
+	resultEnc, resultClear, _ := EncodeLinearRegressionDimsWithProofs(datas, pubKey, nil, nil)
 	return resultEnc, resultClear
 }
 
-//EncodeLinearRegressionDimsWithProofs implements a d-dimensional linear regression algorithm on the query results with range proofs
-func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+// ExecuteLinearRegressionOnProvider computes the result to encode.
+func ExecuteLinearRegressionOnProvider(input [][]int64) []int64 {
+	N := len(input)
+	d := len(input[0]) - 1
+
+	input1 := make([][]int64, N)
+	input2 := make([]int64, N)
+	for i, v := range input {
+		input1[i] = v[:len(v)-1]
+		input2[i] = v[len(v)-1]
+	}
+
 	//sum the Xs and their squares, the Ys and the product of every pair of X and Y
 	sumXj := int64(0)
 	sumY := int64(0)
 	sumXjY := int64(0)
 	sumXjX := int64(0)
 
-	//Input dimension
-	d := len(input1[0])
-	//Input number of Samples
-	N := len(input1)
-
-	var plaintextValues []int64
-	var r []kyber.Scalar
-
-	var CiphertextTuple []libunlynx.CipherText
-	//Encrypt the number of data records considered
-	NEncrypted, r0 := libunlynx.EncryptIntGetR(pubKey, int64(N))
-	CiphertextTuple = append(CiphertextTuple, *NEncrypted)
-	plaintextValues = append(plaintextValues, int64(N))
-	r = append(r, r0)
-
+	plaintextValues := []int64{int64(N)}
 	var StoredVals []int64
 
 	//loop over dimensions
@@ -53,10 +49,7 @@ func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubK
 			sumXj += x
 			sumXjY += input2[i] * x
 		}
-		sumXjEncrypted, rTemp := libunlynx.EncryptIntGetR(pubKey, sumXj)
-		CiphertextTuple = append(CiphertextTuple, *sumXjEncrypted)
 		plaintextValues = append(plaintextValues, sumXj)
-		r = append(r, rTemp)
 		StoredVals = append(StoredVals, sumXjY)
 	}
 
@@ -66,48 +59,61 @@ func EncodeLinearRegressionDimsWithProofs(input1 [][]int64, input2 []int64, pubK
 			for i := 0; i < N; i++ {
 				sumXjX += input1[i][j] * input1[i][k]
 			}
-			sumXjXkEncrypted, rTemp := libunlynx.EncryptIntGetR(pubKey, sumXjX)
-			CiphertextTuple = append(CiphertextTuple, *sumXjXkEncrypted)
 			plaintextValues = append(plaintextValues, sumXjX)
-			r = append(r, rTemp)
 		}
 	}
 
 	for _, el := range input2 {
 		sumY += el
 	}
-	sumYEncrypted, ry := libunlynx.EncryptIntGetR(pubKey, sumY)
-	CiphertextTuple = append(CiphertextTuple, *sumYEncrypted)
 	plaintextValues = append(plaintextValues, sumY)
-	r = append(r, ry)
 
 	for j := 0; j < len(StoredVals); j++ {
-		sumXjYEncrypted, rTemp := libunlynx.EncryptIntGetR(pubKey, StoredVals[j])
-		CiphertextTuple = append(CiphertextTuple, *sumXjYEncrypted)
 		plaintextValues = append(plaintextValues, StoredVals[j])
-		r = append(r, rTemp)
 	}
 
-	if sigs == nil {
-		return CiphertextTuple, []int64{0}, nil
-	}
-	//input range validation proof
-	createProofs := make([]libdrynxrange.CreateProof, len(plaintextValues))
-	wg := libunlynx.StartParallelize(len(plaintextValues))
+	return plaintextValues
+}
+
+//EncodeLinearRegressionDimsWithProofs implements a d-dimensional linear regression algorithm on the query results with range proofs
+func EncodeLinearRegressionDimsWithProofs(datas [][]int64, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*libdrynx.Int64List) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof) {
+	plaintextValues := ExecuteLinearRegressionOnProvider(datas)
+
+	encoded := make([]libunlynx.CipherText, len(plaintextValues))
+	var createProofs []libdrynxrange.CreateProof
 	for i, v := range plaintextValues {
-		go func(i int, v int64) {
-			defer wg.Done()
-			//input range validation proof
-			createProofs[i] = libdrynxrange.CreateProof{Sigs: libdrynxrange.ReadColumn(sigs, i), U: (*lu[i]).Content[0], L: (*lu[i]).Content[1], Secret: v, R: r[i], CaPub: pubKey, Cipher: CiphertextTuple[i]}
-		}(i, v)
+		encrypted, r := libunlynx.EncryptIntGetR(pubKey, v)
+		encoded[i] = *encrypted
+
+		if sigs != nil {
+			createProofs = append(createProofs, libdrynxrange.CreateProof{
+				Sigs:   libdrynxrange.ReadColumn(sigs, i),
+				U:      lu[i].Content[0],
+				L:      lu[i].Content[1],
+				Secret: v,
+				R:      r,
+				CaPub:  pubKey,
+				Cipher: *encrypted,
+			})
+		}
 	}
-	libunlynx.EndParallelize(wg)
-	return CiphertextTuple, []int64{0}, createProofs
+
+	return encoded, plaintextValues, createProofs
 }
 
 //DecodeLinearRegressionDims implements a d-dimensional linear regression algorithm, in this encoding, we assume the system to have a perfect solution
 //TODO least-square computation and not equality
 func DecodeLinearRegressionDims(result []libunlynx.CipherText, secKey kyber.Scalar) []float64 {
+	decoded := make([]int64, len(result))
+	for i, v := range result {
+		decoded[i] = libunlynx.DecryptIntWithNeg(secKey, v)
+	}
+
+	return ExecuteLinearRegressionOnClient(decoded)
+}
+
+// ExecuteLinearRegressionOnClient computes the result from the aggregated results.
+func ExecuteLinearRegressionOnClient(result []int64) []float64 {
 	//get the the number of dimensions by solving the equation: d^2 + 5d + 4 = 2*len(result)
 	posSol, _ := quadratic.Solve(1, 5, complex128(complex(float32(4-2*len(result)), 0)))
 	d := int(real(posSol))
@@ -129,15 +135,15 @@ func DecodeLinearRegressionDims(result []libunlynx.CipherText, secKey kyber.Scal
 			i++
 			s = 0
 		}
-		matrixAugmented[i][i+s] = libunlynx.DecryptIntWithNeg(secKey, result[j])
+		matrixAugmented[i][i+s] = result[j]
 		if i != i+s {
-			matrixAugmented[i+s][i] = libunlynx.DecryptIntWithNeg(secKey, result[j])
+			matrixAugmented[i+s][i] = result[j]
 		}
 		s++
 	}
 
 	for j := len(result) - d - 1; j < len(result); j++ {
-		matrixAugmented[j-len(result)+d+1][d+1] = libunlynx.DecryptIntWithNeg(secKey, result[j])
+		matrixAugmented[j-len(result)+d+1][d+1] = result[j]
 	}
 
 	matrixRational := make([][]rational.Rational, d+1, d+2)

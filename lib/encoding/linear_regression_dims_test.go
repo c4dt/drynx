@@ -20,6 +20,14 @@ func TestEncodeDecodeLinearRegressionDims(t *testing.T) {
 	inputValuesY := []int64{11, 5, 3, 9, 27}
 	//Solution: c0 = 1, c1 = 2, c2 = 4
 
+	datas := make([][]int64, len(inputValuesX))
+	for i, v := range inputValuesX {
+		row := make([]int64, len(v)+1)
+		copy(row, v)
+		row[len(row)-1] = inputValuesY[i]
+		datas[i] = row
+	}
+
 	//Input for 1 dimension
 	//inputValuesX := [][]int64{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {1}}
 	//inputValuesY := []int64{32, 12, 23, 4, 13, -72, 12, 8, 23}
@@ -119,7 +127,7 @@ func TestEncodeDecodeLinearRegressionDims(t *testing.T) {
 
 	//Actual results
 	var resultEncrypted []libunlynx.CipherText
-	resultEncrypted, _ = libdrynxencoding.EncodeLinearRegressionDims(inputValuesX, inputValuesY, pubKey)
+	resultEncrypted, _ = libdrynxencoding.EncodeLinearRegressionDims(datas, pubKey)
 	//Testing the length of the encrypted tuple that is sent
 	assert.Equal(t, (d*d+5*d+4)/2, len(resultEncrypted))
 
@@ -134,6 +142,14 @@ func TestEncodeDecodeLinearRegressionDimsWithProofs(t *testing.T) {
 	inputValuesX := [][]int64{{1, 2}, {0, 1}, {1, 0}, {2, 1}, {3, 5}}
 	inputValuesY := []int64{11, 5, 3, 9, 27}
 	//Solution: c0 = 1, c1 = 2, c2 = 4
+
+	datas := make([][]int64, len(inputValuesX))
+	for i := range inputValuesX {
+		row := make([]int64, 0, len(inputValuesX[0])+1)
+		row = append(row, inputValuesX[i]...)
+		row = append(row, inputValuesY[i])
+		datas[i] = row
+	}
 
 	//dimension
 	d := len(inputValuesX[0])
@@ -263,7 +279,7 @@ func TestEncodeDecodeLinearRegressionDimsWithProofs(t *testing.T) {
 
 	//Actual results
 	var resultEncrypted []libunlynx.CipherText
-	resultEncrypted, _, prf := libdrynxencoding.EncodeLinearRegressionDimsWithProofs(inputValuesX, inputValuesY, pubKey, ps, ranges)
+	resultEncrypted, _, prf := libdrynxencoding.EncodeLinearRegressionDimsWithProofs(datas, pubKey, ps, ranges)
 
 	//Testing the length of the encrypted tuple that is sent
 	assert.Equal(t, (d*d+5*d+4)/2, len(resultEncrypted))

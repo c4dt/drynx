@@ -36,7 +36,7 @@ func (fc FrequencyCount) ExecuteOnProvider(loaded [][]float64) ([]float64, error
 		return nil, errors.New("unexpected number of columns")
 	}
 
-	converted := floatsToInts(loaded[0])
+	converted := floats1DToInts(loaded[0])
 	freqCount := libdrynxencoding.ExecuteFreqCountOnProvider(converted, int64(fc.min), int64(fc.max))
 	ret := make([]float64, len(freqCount))
 	for i, v := range freqCount {
@@ -51,7 +51,7 @@ func (fc FrequencyCount) ExecuteOnClient(aggregated []float64) ([]float64, error
 		return nil, errors.New("unexpected size of aggregated vector")
 	}
 
-	freqCount := libdrynxencoding.ExecuteFreqCountOnClient(floatsToInts(aggregated))
+	freqCount := libdrynxencoding.ExecuteFreqCountOnClient(floats1DToInts(aggregated))
 	ret := make([]float64, len(freqCount))
 	for i, v := range freqCount {
 		ret[i] = float64(v)

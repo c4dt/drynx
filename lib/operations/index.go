@@ -6,7 +6,7 @@ import (
 	"errors"
 )
 
-func floatsToInts(arr []float64) []int64 {
+func floats1DToInts(arr []float64) []int64 {
 	ret := make([]int64, len(arr))
 	for i, v := range arr {
 		ret[i] = int64(v)
@@ -14,10 +14,26 @@ func floatsToInts(arr []float64) []int64 {
 	return ret
 }
 
-func intsToFloats(arr []int64) []float64 {
+func ints1DToFloats(arr []int64) []float64 {
 	ret := make([]float64, len(arr))
 	for i, v := range arr {
 		ret[i] = float64(v)
+	}
+	return ret
+}
+
+func floats2DToInts(arr [][]float64) [][]int64 {
+	ret := make([][]int64, len(arr))
+	for i, v := range arr {
+		ret[i] = floats1DToInts(v)
+	}
+	return ret
+}
+
+func ints2DToFloats(arr [][]int64) [][]float64 {
+	ret := make([][]float64, len(arr))
+	for i, v := range arr {
+		ret[i] = ints1DToFloats(v)
 	}
 	return ret
 }

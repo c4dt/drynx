@@ -35,7 +35,7 @@ func (s Sum) ExecuteOnProvider(loaded [][]float64) ([]float64, error) {
 		return nil, errors.New("unexpected number of columns")
 	}
 
-	converted := floatsToInts(loaded[0])
+	converted := floats1DToInts(loaded[0])
 
 	sum := libdrynxencoding.ExecuteSumOnProvider(converted)
 	return []float64{float64(sum)}, nil
@@ -47,7 +47,7 @@ func (s Sum) ExecuteOnClient(aggregated []float64) ([]float64, error) {
 		return nil, errors.New("unexpected size of aggregated vector")
 	}
 
-	return []float64{float64(libdrynxencoding.ExecuteSumOnClient(floatsToInts(aggregated)))}, nil
+	return []float64{float64(libdrynxencoding.ExecuteSumOnClient(floats1DToInts(aggregated)))}, nil
 }
 
 // GetInputSize returns 1.
