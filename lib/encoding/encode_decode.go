@@ -8,6 +8,7 @@ import (
 	"github.com/ldsec/unlynx/lib"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/onet/v3/log"
+	"gonum.org/v1/gonum/mat"
 )
 
 // Encode takes care of computing the query result and encode it for all possible operations.
@@ -231,7 +232,7 @@ func Decode(ciphers []libunlynx.CipherText, secKey kyber.Scalar, operation libdr
 }
 
 // EncodeForFloat encodes floating points
-func EncodeForFloat(xData [][]float64, yData []int64, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point,
+func EncodeForFloat(xData *mat.Dense, yData *mat.VecDense, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point,
 	signatures [][]libdrynx.PublishSignature, ranges []*[]int64, operation string) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof, error) {
 
 	clearResponse := make([]int64, 0)

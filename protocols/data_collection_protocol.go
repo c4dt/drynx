@@ -3,6 +3,9 @@ package protocols
 import (
 	"errors"
 	"fmt"
+	"math/rand"
+	"sync"
+
 	"github.com/ldsec/drynx/lib"
 	"github.com/ldsec/drynx/lib/encoding"
 	"github.com/ldsec/drynx/lib/proof"
@@ -14,8 +17,7 @@ import (
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
-	"math/rand"
-	"sync"
+	"gonum.org/v1/gonum/mat"
 )
 
 // DataCollectionProtocolName is the registered name for the data provider protocol.
@@ -206,8 +208,8 @@ func (p *DataCollectionProtocol) GenerateData() (libdrynx.ResponseDPBytes, error
 	fakeData := createFakeDataForOperation(p.Survey.Query.Operation, p.Survey.Query.DPDataGen.GenerateRows, p.Survey.Query.DPDataGen.GenerateDataMin, p.Survey.Query.DPDataGen.GenerateDataMax)
 
 	// logistic regression specific
-	var xFloat [][]float64
-	var yInt []int64
+	var xFloat *mat.Dense
+	var yInt *mat.VecDense
 	lrParameters := p.Survey.Query.Operation.LRParameters
 	if p.Survey.Query.Operation.NameOp == "logistic regression" {
 		if lrParameters.FilePath != "" {
@@ -222,21 +224,20 @@ func (p *DataCollectionProtocol) GenerateData() (libdrynx.ResponseDPBytes, error
 
 			// set the number of records to the number of records owned by this data provider
 			//dataSpecifics = recq.Query.Operation.DataSpecifics
-			lrParameters.NbrRecords = int64(len(xFloat))
+			rowCount, _ := xFloat.Dims()
+			lrParameters.NbrRecords = int64(rowCount)
 		} else {
 			// create dummy data
-			xFloat = make([][]float64, lrParameters.NbrRecords)
-			yInt = make([]int64, lrParameters.NbrRecords)
+			xFloat = mat.NewDense(int(lrParameters.NbrRecords), int(lrParameters.NbrFeatures), nil)
+			yInt = mat.NewVecDense(int(lrParameters.NbrRecords), nil)
 			limit := 4
 
-			m := int(lrParameters.NbrFeatures)
+			xFloat.Apply(func(i, j int, v float64) float64 {
+				return float64(rand.Intn(limit))
+			}, xFloat)
+
 			for i := 0; i < int(lrParameters.NbrRecords); i++ {
-				xFloat[i] = make([]float64, m)
-				yInt[i] = int64(rand.Intn(2)) // sample 0 or 1 randomly for the label
-				for j := 1; j < m; j++ {
-					r := rand.Intn(limit)
-					xFloat[i][j] = float64(r)
-				}
+				yInt.SetVec(i, float64(rand.Intn(2))) // sample 0 or 1 randomly for the label
 			}
 		}
 	}

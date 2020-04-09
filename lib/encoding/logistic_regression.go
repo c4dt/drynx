@@ -20,8 +20,8 @@ import (
 	"github.com/ldsec/drynx/lib/range"
 	"github.com/ldsec/unlynx/lib"
 
-	"github.com/montanaflynn/stats"
 	"gonum.org/v1/gonum/integrate"
+	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat"
 	"gonum.org/v1/gonum/stat/combin"
 )
@@ -43,7 +43,7 @@ var NumDps = 10
 // -------------------------
 
 // EncodeLogisticRegression computes and encrypts the data provider's coefficients for logistic regression
-func EncodeLogisticRegression(xData [][]float64, yData []int64, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point) ([]libunlynx.CipherText, []int64, error) {
+func EncodeLogisticRegression(xData *mat.Dense, yData *mat.VecDense, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point) ([]libunlynx.CipherText, []int64, error) {
 
 	d := lrParameters.NbrFeatures
 	n := getTotalNumberApproxCoefficients(d, lrParameters.K)
@@ -51,63 +51,58 @@ func EncodeLogisticRegression(xData [][]float64, yData []int64, lrParameters lib
 	aggregatedApproxCoefficientsIntPacked := make([]int64, n)
 	encryptedAggregatedApproxCoefficients := make([]libunlynx.CipherText, n)
 
-	if xData != nil && len(xData) > 0 {
-		// unpack the data into features and labels
-		/*labelColumn := 0
-		X := RemoveColumn(data, labelColumn)
-		y := Float64ToInt641DArray(GetColumn(data, labelColumn))*/
+	// unpack the data into features and labels
+	/*labelColumn := 0
+	X := RemoveColumn(data, labelColumn)
+	y := Float64ToInt641DArray(GetColumn(data, labelColumn))*/
 
-		// standardise the data
-		var XStandardised [][]float64
-		if lrParameters.Means != nil && lrParameters.StandardDeviations != nil &&
-			len(lrParameters.Means) > 0 && len(lrParameters.StandardDeviations) > 0 {
-			// using global means and standard deviations, if given
-			log.Lvl2("Standardising the training set with global means and standard deviations...")
-			XStandardised = StandardiseWith(xData, lrParameters.Means, lrParameters.StandardDeviations)
-		} else {
-			// using local means and standard deviations, if not given
-			log.Lvl2("Standardising the training set with local means and standard deviations...")
-			var err error
-			if XStandardised, err = Standardise(xData); err != nil {
-				return nil, nil, err
-			}
+	// standardise the data
+	if lrParameters.Means != nil && lrParameters.StandardDeviations != nil &&
+		len(lrParameters.Means) > 0 && len(lrParameters.StandardDeviations) > 0 {
+		// using global means and standard deviations, if given
+		log.Lvl2("Standardising the training set with global means and standard deviations...")
+		StandardiseWith(xData, lrParameters.Means, lrParameters.StandardDeviations)
+	} else {
+		// using local means and standard deviations, if not given
+		log.Lvl2("Standardising the training set with local means and standard deviations...")
+		Standardise(xData)
+	}
+
+	// add an all 1s column to the data (offset term)
+	xData = Augment(xData)
+
+	N := lrParameters.NbrRecords
+	// compute all approximation coefficients per record
+	approxCoefficients := make([][][]float64, N)
+	rowCount, _ := xData.Dims()
+	for i := 0; i < rowCount; i++ {
+		approxCoefficients[i] = ComputeAllApproxCoefficients(xData.RowView(i), int64(yData.AtVec(i)), lrParameters.K)
+	}
+
+	// aggregate the approximation coefficients locally
+	aggregatedApproxCoefficients := AggregateApproxCoefficients(approxCoefficients)
+
+	// convert (and optionally scale) the aggregated approximation coefficients to int
+	aggregatedApproxCoefficientsInt := Float64ToInt642DArrayWithPrecision(aggregatedApproxCoefficients, lrParameters.PrecisionApproxCoefficients)
+
+	// encrypt the aggregated approximation coefficients
+	encryptedApproxCoefficients, _ := ComputeEncryptedApproxCoefficients(aggregatedApproxCoefficientsInt, pubKey)
+
+	// pack the encrypted aggregated approximation coefficients (will need to unpack the result at the querier side)
+	for j := 0; j < lrParameters.K; j++ {
+		nLevel := getNumberApproxCoefficients(d, j)
+		nLevelPrevious := getNumberApproxCoefficients(d, j-1)
+		for i := 0; i < nLevel; i++ {
+			encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i] = (*encryptedApproxCoefficients[j])[i]
 		}
+	}
 
-		// add an all 1s column to the data (offset term)
-		XStandardised = Augment(XStandardised)
-
-		N := lrParameters.NbrRecords
-		// compute all approximation coefficients per record
-		approxCoefficients := make([][][]float64, N)
-		for i := 0; i < len(XStandardised); i++ {
-			approxCoefficients[i] = ComputeAllApproxCoefficients(XStandardised[i], yData[i], lrParameters.K)
-		}
-
-		// aggregate the approximation coefficients locally
-		aggregatedApproxCoefficients := AggregateApproxCoefficients(approxCoefficients)
-
-		// convert (and optionally scale) the aggregated approximation coefficients to int
-		aggregatedApproxCoefficientsInt := Float64ToInt642DArrayWithPrecision(aggregatedApproxCoefficients, lrParameters.PrecisionApproxCoefficients)
-
-		// encrypt the aggregated approximation coefficients
-		encryptedApproxCoefficients, _ := ComputeEncryptedApproxCoefficients(aggregatedApproxCoefficientsInt, pubKey)
-
-		// pack the encrypted aggregated approximation coefficients (will need to unpack the result at the querier side)
-		for j := 0; j < lrParameters.K; j++ {
-			nLevel := getNumberApproxCoefficients(d, j)
-			nLevelPrevious := getNumberApproxCoefficients(d, j-1)
-			for i := 0; i < nLevel; i++ {
-				encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i] = (*encryptedApproxCoefficients[j])[i]
-			}
-		}
-
-		// pack the aggregated approximation coefficients
-		for j := 0; j < lrParameters.K; j++ {
-			nLevel := getNumberApproxCoefficients(d, j)
-			nLevelPrevious := getNumberApproxCoefficients(d, j-1)
-			for i := 0; i < nLevel; i++ {
-				aggregatedApproxCoefficientsIntPacked[j*nLevelPrevious+i] = aggregatedApproxCoefficientsInt[j][i]
-			}
+	// pack the aggregated approximation coefficients
+	for j := 0; j < lrParameters.K; j++ {
+		nLevel := getNumberApproxCoefficients(d, j)
+		nLevelPrevious := getNumberApproxCoefficients(d, j-1)
+		for i := 0; i < nLevel; i++ {
+			aggregatedApproxCoefficientsIntPacked[j*nLevelPrevious+i] = aggregatedApproxCoefficientsInt[j][i]
 		}
 	}
 
@@ -124,7 +119,7 @@ type CipherAndRandom struct {
 }
 
 // EncodeLogisticRegressionWithProofs computes and encrypts the data provider's coefficients for logistic regression with range proofs
-func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof, error) {
+func EncodeLogisticRegressionWithProofs(xData *mat.Dense, yData *mat.VecDense, lrParameters libdrynx.LogisticRegressionParameters, pubKey kyber.Point, sigs [][]libdrynx.PublishSignature, lu []*[]int64) ([]libunlynx.CipherText, []int64, []libdrynxrange.CreateProof, error) {
 
 	d := lrParameters.NbrFeatures
 	n := getTotalNumberApproxCoefficients(d, lrParameters.K)
@@ -133,66 +128,61 @@ func EncodeLogisticRegressionWithProofs(xData [][]float64, yData []int64, lrPara
 	encryptedAggregatedApproxCoefficients := make([]CipherAndRandom, n)
 	encryptedAggregatedApproxCoefficientsOnlyCipher := make([]libunlynx.CipherText, n)
 
-	if xData != nil && len(xData) > 0 {
-		// unpack the data into features and labels
-		/*labelColumn := 0
-		X := RemoveColumn(data, labelColumn)
-		y := Float64ToInt641DArray(GetColumn(data, labelColumn))*/
+	// unpack the data into features and labels
+	/*labelColumn := 0
+	X := RemoveColumn(data, labelColumn)
+	y := Float64ToInt641DArray(GetColumn(data, labelColumn))*/
 
-		// standardise the data
-		var XStandardised [][]float64
-		if lrParameters.Means != nil && lrParameters.StandardDeviations != nil &&
-			len(lrParameters.Means) > 0 && len(lrParameters.StandardDeviations) > 0 {
-			// using global means and standard deviations, if given
-			log.Lvl2("Standardising the training set with global means and standard deviations...")
-			XStandardised = StandardiseWith(xData, lrParameters.Means, lrParameters.StandardDeviations)
-		} else {
-			// using local means and standard deviations, if not given
-			log.Lvl2("Standardising the training set with local means and standard deviations...")
-			var err error
-			if XStandardised, err = Standardise(xData); err != nil {
-				return nil, nil, nil, err
-			}
+	// standardise the data
+	if lrParameters.Means != nil && lrParameters.StandardDeviations != nil &&
+		len(lrParameters.Means) > 0 && len(lrParameters.StandardDeviations) > 0 {
+		// using global means and standard deviations, if given
+		log.Lvl2("Standardising the training set with global means and standard deviations...")
+		StandardiseWith(xData, lrParameters.Means, lrParameters.StandardDeviations)
+	} else {
+		// using local means and standard deviations, if not given
+		log.Lvl2("Standardising the training set with local means and standard deviations...")
+		Standardise(xData)
+	}
+
+	// add an all 1s column to the data (offset term)
+	xData = Augment(xData)
+
+	N := lrParameters.NbrRecords
+
+	// compute all approximation coefficients per record
+	approxCoefficients := make([][][]float64, N)
+	rowCount, _ := xData.Dims()
+	for i := 0; i < rowCount; i++ {
+		approxCoefficients[i] = ComputeAllApproxCoefficients(xData.RowView(i), int64(yData.AtVec(i)), lrParameters.K)
+	}
+
+	// aggregate the approximation coefficients locally
+	aggregatedApproxCoefficients := AggregateApproxCoefficients(approxCoefficients)
+
+	// convert (and optionally scale) the aggregated approximation coefficients to int
+	aggregatedApproxCoefficientsInt := Float64ToInt642DArrayWithPrecision(aggregatedApproxCoefficients, lrParameters.PrecisionApproxCoefficients)
+
+	// encrypt the aggregated approximation coefficients
+	encryptedApproxCoefficients, encryptedApproxCoefficientsRs := ComputeEncryptedApproxCoefficients(aggregatedApproxCoefficientsInt, pubKey)
+
+	// pack the encrypted aggregated approximation coefficients (will need to unpack the result at the querier side)
+	for j := 0; j < lrParameters.K; j++ {
+		nLevel := getNumberApproxCoefficients(d, j)
+		nLevelPrevious := getNumberApproxCoefficients(d, j-1)
+		for i := 0; i < nLevel; i++ {
+			encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i].C = (*encryptedApproxCoefficients[j])[i]
+			encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i].r = (encryptedApproxCoefficientsRs[j])[i]
+			encryptedAggregatedApproxCoefficientsOnlyCipher[j*nLevelPrevious+i] = (*encryptedApproxCoefficients[j])[i]
 		}
+	}
 
-		// add an all 1s column to the data (offset term)
-		XStandardised = Augment(XStandardised)
-
-		N := lrParameters.NbrRecords
-
-		// compute all approximation coefficients per record
-		approxCoefficients := make([][][]float64, N)
-		for i := 0; i < len(XStandardised); i++ {
-			approxCoefficients[i] = ComputeAllApproxCoefficients(XStandardised[i], yData[i], lrParameters.K)
-		}
-
-		// aggregate the approximation coefficients locally
-		aggregatedApproxCoefficients := AggregateApproxCoefficients(approxCoefficients)
-
-		// convert (and optionally scale) the aggregated approximation coefficients to int
-		aggregatedApproxCoefficientsInt := Float64ToInt642DArrayWithPrecision(aggregatedApproxCoefficients, lrParameters.PrecisionApproxCoefficients)
-
-		// encrypt the aggregated approximation coefficients
-		encryptedApproxCoefficients, encryptedApproxCoefficientsRs := ComputeEncryptedApproxCoefficients(aggregatedApproxCoefficientsInt, pubKey)
-
-		// pack the encrypted aggregated approximation coefficients (will need to unpack the result at the querier side)
-		for j := 0; j < lrParameters.K; j++ {
-			nLevel := getNumberApproxCoefficients(d, j)
-			nLevelPrevious := getNumberApproxCoefficients(d, j-1)
-			for i := 0; i < nLevel; i++ {
-				encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i].C = (*encryptedApproxCoefficients[j])[i]
-				encryptedAggregatedApproxCoefficients[j*nLevelPrevious+i].r = (encryptedApproxCoefficientsRs[j])[i]
-				encryptedAggregatedApproxCoefficientsOnlyCipher[j*nLevelPrevious+i] = (*encryptedApproxCoefficients[j])[i]
-			}
-		}
-
-		// pack the aggregated approximation coefficients
-		for j := 0; j < lrParameters.K; j++ {
-			nLevel := getNumberApproxCoefficients(d, j)
-			nLevelPrevious := getNumberApproxCoefficients(d, j-1)
-			for i := 0; i < nLevel; i++ {
-				aggregatedApproxCoefficientsIntPacked[j*nLevelPrevious+i] = aggregatedApproxCoefficientsInt[j][i]
-			}
+	// pack the aggregated approximation coefficients
+	for j := 0; j < lrParameters.K; j++ {
+		nLevel := getNumberApproxCoefficients(d, j)
+		nLevelPrevious := getNumberApproxCoefficients(d, j-1)
+		for i := 0; i < nLevel; i++ {
+			aggregatedApproxCoefficientsIntPacked[j*nLevelPrevious+i] = aggregatedApproxCoefficientsInt[j][i]
 		}
 	}
 
@@ -364,8 +354,8 @@ func ComputeDistinctApproxCoefficients(X []float64, y int64, k int) [][]float64 
 }
 
 // ComputeAllApproxCoefficients computes all the coefficients of the approximated logistic regression cost function
-func ComputeAllApproxCoefficients(X []float64, y int64, k int) [][]float64 {
-	d := len(X) - 1 // the dimension of the data
+func ComputeAllApproxCoefficients(X mat.Vector, y int64, k int) [][]float64 {
+	d := X.Len() - 1 // the dimension of the data
 
 	// case k <= 3 ok
 	approxCoefficients := make([][]float64, k)
@@ -375,7 +365,7 @@ func ComputeAllApproxCoefficients(X []float64, y int64, k int) [][]float64 {
 
 	// initialisation: computation of the coefficients for k = 1
 	for s := 0; s <= d; s++ {
-		approxCoefficients[0][s] = X[s] * (2*float64(y) - 1)
+		approxCoefficients[0][s] = X.AtVec(s) * (2*float64(y) - 1)
 	}
 
 	// computation of the coefficients for k >= 2
@@ -392,7 +382,7 @@ func ComputeAllApproxCoefficients(X []float64, y int64, k int) [][]float64 {
 			combination := combinations[ri]
 
 			for i := 0; i < len(combination); i++ {
-				XProduct *= X[int(combination[i])]
+				XProduct *= X.AtVec(int(combination[i]))
 			}
 
 			approxCoefficients[j-1][ri] = ypart * XProduct
@@ -766,15 +756,15 @@ func FindMinimumWeightsWithEncryption(encryptedApproxCoefficients []*libunlynx.C
 }
 
 // LogisticRegressionCost computes the result of the logistic regression cost function (with l2-regularization)
-func LogisticRegressionCost(weights []float64, x [][]float64, y []int64, N int64, lambda float64) float64 {
+func LogisticRegressionCost(weights []float64, x mat.Matrix, y mat.Vector, N int64, lambda float64) float64 {
 	cost := 0.0
 
-	for i := 0; i < len(x); i++ {
+	for i := 0; i < y.Len(); i++ {
 		s1 := 0.0
 		for j := 0; j < len(weights); j++ {
-			s1 += x[i][j] * weights[j]
+			s1 += x.At(i, j) * weights[j]
 		}
-		s2 := float64(y[i]) * s1
+		s2 := float64(y.AtVec(i)) * s1
 		s1 = math.Log(1 + math.Exp(s1))
 		cost += s1 - s2
 	}
@@ -818,10 +808,10 @@ func sigmoid(x float64) float64 {
 }
 
 // PredictInClear computes a prediction according to logistic regression for data and weights given in clear
-func PredictInClear(data []float64, weights []float64) float64 {
+func PredictInClear(data mat.Vector, weights []float64) float64 {
 	sum := 0.0
-	for i := 0; i < len(data); i++ {
-		sum += weights[i+1] * data[i]
+	for i := 0; i < data.Len(); i++ {
+		sum += weights[i+1] * data.AtVec(i)
 	}
 
 	prediction := 1 / (1 + math.Exp(-weights[0]-sum))
@@ -903,123 +893,100 @@ func PredictHomomorphic(encryptedData libunlynx.CipherVector, weights []float64,
 //--------------------
 
 // ComputeMeans returns the means of each column of the given data matrix
-func ComputeMeans(data [][]float64) ([]float64, error) {
-	means := make([]float64, len(data[0]))
+func ComputeMeans(matrix *mat.Dense) []float64 {
+	rowCount, columnCount := matrix.Dims()
 
+	means := make([]float64, columnCount)
 	for i := range means {
-		feature, err := GetColumn(data, uint(i))
-		if err != nil {
-			return nil, err
+		column := matrix.ColView(i)
+		extracted := make([]float64, rowCount)
+		for j := range extracted {
+			extracted[i] = column.AtVec(j)
 		}
-		means[i], _ = stats.Mean(feature)
+
+		means[i] = stat.Mean(extracted, nil)
 	}
 
-	return means, nil
+	return means
 }
 
 // ComputeStandardDeviations returns the standard deviation of each column of the given data matrix
-func ComputeStandardDeviations(data [][]float64) ([]float64, error) {
-	standardDeviations := make([]float64, len(data[0]))
+func ComputeStandardDeviations(matrix *mat.Dense) []float64 {
+	rowCount, columnCount := matrix.Dims()
 
+	standardDeviations := make([]float64, columnCount)
 	for i := range standardDeviations {
-		feature, err := GetColumn(data, uint(i))
-		if err != nil {
-			return nil, err
+		column := matrix.ColView(i)
+		extracted := make([]float64, rowCount)
+		for j := range extracted {
+			extracted[i] = column.AtVec(j)
 		}
-		standardDeviations[i], _ = stats.StandardDeviation(feature)
+
+		standardDeviations[i] = stat.StdDev(extracted, nil)
 	}
 
-	return standardDeviations, nil
+	return standardDeviations
 }
 
 // Standardise returns the standardized 2D array version of the given 2D array
 // i.e. x' = (x - mean) / standard deviation
-func Standardise(matrix [][]float64) ([][]float64, error) {
-	return StandardiseWithTrain(matrix, matrix)
+func Standardise(matrix *mat.Dense) {
+	StandardiseWithTrain(matrix, matrix)
 }
 
 // StandardiseWithTrain standardises a matrix with the given matrix means and standard deviations
-func StandardiseWithTrain(matrixTest, matrixTrain [][]float64) ([][]float64, error) {
-	sds, err := ComputeStandardDeviations(matrixTrain)
-	if err != nil {
-		return nil, err
-	}
-	means, err := ComputeMeans(matrixTrain)
-	if err != nil {
-		return nil, err
-	}
+func StandardiseWithTrain(toStandardise, standarizer *mat.Dense) {
+	sds := ComputeStandardDeviations(standarizer)
+	means := ComputeMeans(standarizer)
 
-	standardisedMatrix := make([][]float64, len(matrixTest))
-	for i, record := range matrixTest {
-		standardisedMatrix[i] = make([]float64, len(record))
-		for j, v := range record {
-			standardisedMatrix[i][j] = float64(v-means[j]) / sds[j]
-		}
-	}
-
-	return standardisedMatrix, nil
+	StandardiseWith(toStandardise, means, sds)
 }
 
 // StandardiseWith standardises a dataset column-wise using the given means and standard deviations
-func StandardiseWith(data [][]float64, means []float64, standardDeviations []float64) [][]float64 {
-
-	nbFeatures := len(data[0])
-
-	standardisedData := make([][]float64, len(data))
-
-	for record := 0; record < len(data); record++ {
-		standardisedData[record] = make([]float64, nbFeatures)
-		for i := 0; i < nbFeatures; i++ {
-			standardisedData[record][i] = float64(data[record][i]-means[i]) / standardDeviations[i]
-		}
-	}
-
-	return standardisedData
+func StandardiseWith(toStandardise *mat.Dense, means []float64, standardDeviations []float64) {
+	toStandardise.Apply(func(i, j int, v float64) float64 {
+		return float64(v-means[j]) / standardDeviations[j]
+	}, toStandardise)
 }
 
 // Normalize normalises a matrix column-wise
-func Normalize(matrix [][]float64) ([][]float64, error) {
+func Normalize(matrix *mat.Dense) error {
 	return NormalizeWith(matrix, matrix)
 }
 
 // NormalizeWith normalises a matrix column-wise with the given matrix min and max values
-func NormalizeWith(matrixTest, matrixTrain [][]float64) ([][]float64, error) {
-	nbFeatures := len(matrixTrain[0])
+func NormalizeWith(toNormalize, normalizer *mat.Dense) error {
+	rowCount, columnCount := normalizer.Dims()
 
-	min := make([]float64, nbFeatures)
-	max := make([]float64, nbFeatures)
+	min := make([]float64, rowCount)
+	max := make([]float64, rowCount)
 
-	for i := range matrixTrain[0] {
-		feature, err := GetColumn(matrixTrain, uint(i))
-		if err != nil {
-			return nil, err
-		}
-
-		min[i], _ = stats.Min(feature)
-		max[i], _ = stats.Max(feature)
+	for i := 0; i < columnCount; i++ {
+		column := normalizer.ColView(i)
+		min[i] = mat.Min(column)
+		max[i] = mat.Max(column)
 	}
 
-	normalizedMatrix := make([][]float64, len(matrixTest))
-	for i, record := range matrixTest {
-		normalizedMatrix[i] = make([]float64, len(record))
-		for j, v := range record {
-			normalizedMatrix[i][j] = float64(v-min[j]) / (max[j] - min[j])
-		}
-	}
+	toNormalize.Apply(func(i, j int, v float64) float64 {
+		return float64(v-min[j]) / (max[j] - min[j])
+	}, toNormalize)
 
-	return normalizedMatrix, nil
+	return nil
 }
 
 // Augment returns the given 2D array with an additional all 1's column prepended as the first column
-func Augment(matrix [][]float64) [][]float64 {
-	column := make([]float64, len(matrix))
-	for i := 0; i < len(matrix); i++ {
-		column[i] = 1
+func Augment(matrix *mat.Dense) *mat.Dense {
+	rowCount, columnCount := matrix.Dims()
+
+	column := mat.NewVecDense(rowCount, nil)
+	for i := 0; i < rowCount; i++ {
+		column.SetVec(i, 1)
 	}
 
-	matrix = InsertColumn(matrix, column, 0)
+	ret := mat.NewDense(rowCount, columnCount+1, nil)
+	ret.Augment(column, matrix)
 
-	return matrix
+	return ret
 }
 
 // returns the given 2D array flattened into a 1D array
@@ -1272,40 +1239,27 @@ func String2DToFloat64(dataString [][]string) [][]float64 {
 
 // LoadData loads some specific datasets from file into a pair of feature matrix and label vector
 // the available datasets are: SPECTF, Pima, PCS and LBW
-func LoadData(dataset string, filename string) ([][]float64, []int64, error) {
-	labelColumn := uint(0)
-
-	data, err := ReadFile(filename, ',')
+func LoadData(dataset string, filename string) (*mat.Dense, *mat.VecDense, error) {
+	dense, err := ReadFile(filename, ',')
 	if err != nil {
 		return nil, nil, fmt.Errorf("when reading file: %w", err)
 	}
 
 	if dataset == "PCS" {
-		// remove the index column and the two last columns (unused)
-		for _, i := range []uint{11, 10, 0} {
-			var err error
-			if data, err = RemoveColumn(data, i); err != nil {
-				return nil, nil, err
-			}
-		}
+		rowCount, columnCount := dense.Dims()
+		dense = dense.Slice(0, rowCount, 1, columnCount-1).(*mat.Dense)
 	}
 
-	X, err := RemoveColumn(data, labelColumn)
-	if err != nil {
-		return nil, nil, err
-	}
-	yFloat, err := GetColumn(data, labelColumn)
-	if err != nil {
-		return nil, nil, err
-	}
-	y := Float64ToInt641DArray(yFloat)
+	rowCount, columnCount := dense.Dims()
+	yVector := dense.ColView(0)
+	matrix := dense.Slice(0, rowCount, 1, columnCount)
 
-	return X, y, nil
+	return matrix.(*mat.Dense), yVector.(*mat.VecDense), nil
 }
 
 // ReadFile reads a dataset from file into a string matrix
 // removes incorrectly formatted records
-func ReadFile(path string, separator rune) ([][]float64, error) {
+func ReadFile(path string, separator rune) (*mat.Dense, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening file: %w", err)
@@ -1316,8 +1270,9 @@ func ReadFile(path string, separator rune) ([][]float64, error) {
 	reader.Comma = separator
 	reader.TrimLeadingSpace = true
 
-	var records [][]float64
-	for {
+	var records []float64
+	lineCount := 0
+	for ; ; lineCount++ {
 		record, err := reader.Read()
 		if record == nil && errors.Is(err, io.EOF) {
 			break
@@ -1330,15 +1285,15 @@ func ReadFile(path string, separator rune) ([][]float64, error) {
 		for i, v := range record {
 			parsed, err := strconv.ParseFloat(v, 64)
 			if err != nil {
-				return nil, fmt.Errorf("parsing as float at line %v, element %v: %w", len(records), i, err)
+				return nil, fmt.Errorf("parsing as float at line %v, element %v: %w", lineCount, i, err)
 			}
 			line[i] = parsed
 		}
 
-		records = append(records, line)
+		records = append(records, line...)
 	}
 
-	return records, nil
+	return mat.NewDense(lineCount, reader.FieldsPerRecord, records), nil
 }
 
 // GetColumn returns the column at index <idx> in the given 2D array <matrix>
@@ -1387,64 +1342,62 @@ func ReplaceString(matrix [][]string, old string, new string) [][]string {
 	return matrix
 }
 
-// PartitionDataset partitions a dataset with feature matrix X and label vector y into two datasets waccording to the given ratio
-// optionally shuffles the dataset before partition
-func PartitionDataset(X [][]float64, y []int64, ratio float64, shuffle bool, seed int64) ([][]float64, []int64,
-	[][]float64, []int64) {
+// PartitionDataset partitions a dataset with feature matrix X and label vector y into two datasets according to the given ratio
+// optionally shuffles the dataset before partition.
+// It consumes the given values, you can't use X or y after the call as it will be moved to the return values.
+func PartitionDataset(X *mat.Dense, y *mat.VecDense, ratio float64, shuffle bool, seed int64) (*mat.Dense, mat.Vector,
+	*mat.Dense, mat.Vector) {
 
-	var XTrain [][]float64
-	var yTrain []int64
-	var XTest [][]float64
-	var yTest []int64
-
-	numRecords := len(X)
-	numRecordsTrain := int(float64(numRecords) * ratio)
-
-	indices := Range(0, int64(numRecords))
+	rowCount, columnCount := X.Dims()
 
 	if shuffle {
+		swaps := make([]int, rowCount)
+		for i := range swaps {
+			swaps[i] = i
+		}
 		rand.Seed(seed)
-		rand.Shuffle(len(indices), func(i, j int) { indices[i], indices[j] = indices[j], indices[i] })
+		rand.Shuffle(len(swaps), func(i, j int) { swaps[i], swaps[j] = swaps[j], swaps[i] })
+
+		var permutation *mat.Dense
+		permutation.Permutation(rowCount, swaps)
+
+		X.Mul(permutation, X)
 	}
 
-	indicesTrain := indices[0:numRecordsTrain]
-	indicesTest := indices[numRecordsTrain:]
+	numRecords := y.Len()
+	numRecordsTrain := int(float64(numRecords) * ratio)
 
-	for i := 0; i < len(indicesTrain); i++ {
-		XTrain = append(XTrain, X[indicesTrain[i]])
-		yTrain = append(yTrain, y[indicesTrain[i]])
-	}
+	XTrain := X.Slice(0, numRecordsTrain, 0, columnCount)
+	yTrain := y.SliceVec(0, numRecordsTrain)
 
-	for i := 0; i < len(indicesTest); i++ {
-		XTest = append(XTest, X[indicesTest[i]])
-		yTest = append(yTest, y[indicesTest[i]])
-	}
+	XTest := X.Slice(numRecordsTrain, rowCount, 0, columnCount)
+	yTest := y.SliceVec(numRecordsTrain, rowCount)
 
-	return XTrain, yTrain, XTest, yTest
+	return XTrain.(*mat.Dense), yTrain, XTest.(*mat.Dense), yTest
 }
 
 // GetDataForDataProvider returns data records from a file for a given data provider based on its id
-func GetDataForDataProvider(datasetName, filename string, dataProviderIdentity network.ServerIdentity) ([][]float64, []int64, error) {
-	var xForDP [][]float64
-	var yForDP []int64
+func GetDataForDataProvider(datasetName, filename string, dataProviderIdentity network.ServerIdentity) (*mat.Dense, *mat.VecDense, error) {
 	X, y, err := LoadData(datasetName, filename)
 	if err != nil {
 		return nil, nil, fmt.Errorf("when loading data: %w", err)
 	}
 	dataProviderID := dataProviderIdentity.String()
 	dpID, err := strconv.Atoi(dataProviderID[len(dataProviderID)-2 : len(dataProviderID)-1])
-
-	if err == nil {
-		for i := 0; i < len(X); i++ {
-			if i%NumDps == dpID {
-				xForDP = append(xForDP, X[i])
-				yForDP = append(yForDP, y[i])
-			}
-		}
-		fmt.Println("DP", dataProviderIdentity.String(), " has:", len(xForDP), "records")
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to extract data provider id: %w", err)
 	}
 
-	return xForDP, yForDP, nil
+	rowCount, columnCount := X.Dims()
+
+	numberOfRowPerDP := rowCount / NumDps
+	sliceStart := dpID * numberOfRowPerDP
+	sliceEnd := (dpID + 1) * numberOfRowPerDP
+
+	xForDP := X.Slice(sliceStart, sliceEnd, 0, columnCount)
+	yForDP := y.SliceVec(sliceStart, sliceEnd)
+
+	return xForDP.(*mat.Dense), yForDP.(*mat.VecDense), nil
 }
 
 // -----------------
@@ -1452,10 +1405,10 @@ func GetDataForDataProvider(datasetName, filename string, dataProviderIdentity n
 // -----------------
 
 // Range returns the integer range going from <start> (included) to <end> (excluded)
-func Range(start int64, end int64) []int64 {
+func Range(start int, end int) []int {
 	n := end - start
-	result := make([]int64, n)
-	for i := int64(0); i < n; i++ {
+	result := make([]int, n)
+	for i := int(0); i < n; i++ {
 		result[i] = start + i
 	}
 	return result
@@ -1513,16 +1466,14 @@ func Int64ToFloat641DArray(arrayInt64 []int64) []float64 {
 	return arrayFloat64
 }
 
-// Float64ToInt641DArray converts a one-dimensional int64 array to a one-dimensional float64 array
-func Float64ToInt641DArray(arrayFloat64 []float64) []int64 {
-	k := len(arrayFloat64)
-
-	arrayInt64 := make([]int64, k)
-	for i := 0; i < k; i++ {
-		arrayInt64[i] = int64(math.Round(arrayFloat64[i]))
+// VecToInt641DArray converts a one-dimensional int64 array to a one-dimensional float64 array
+func VecToInt641DArray(vec mat.Vector) []int64 {
+	ret := make([]int64, vec.Len())
+	for i := range ret {
+		ret[i] = int64(math.Round(vec.AtVec(i)))
 	}
 
-	return arrayInt64
+	return ret
 }
 
 // Int64ToFloat642DArray converts a two-dimensional int64 array to a two-dimensional float64 array
@@ -1542,35 +1493,35 @@ func Float64ToInt642DArray(arrayFloat64 [][]float64) [][]int64 {
 	k := len(arrayFloat64)
 
 	arrayInt64 := make([][]int64, k)
-	for i := 0; i < k; i++ {
-		arrayInt64[i] = Float64ToInt641DArray(arrayFloat64[i])
+	for i, v := range arrayFloat64 {
+		row := make([]int64, len(v))
+		for j := range row {
+			row[j] = int64(math.Round(v[j]))
+		}
+		arrayInt64[i] = row
 	}
 
 	return arrayInt64
 }
 
 // Float64ToInt641DArrayWithPrecision converts a 1D float64 array to a 1D int64 array with the given precision
-func Float64ToInt641DArrayWithPrecision(arrayFloat64 []float64, precision float64) []int64 {
-	k := len(arrayFloat64)
-
-	arrayInt64 := make([]int64, k)
-	for i := 0; i < k; i++ {
-		arrayInt64[i] = int64(math.Round(arrayFloat64[i] * precision))
+func Float64ToInt641DArrayWithPrecision(vector []float64, precision float64) []int64 {
+	arrayInt64 := make([]int64, len(vector))
+	for i := range arrayInt64 {
+		arrayInt64[i] = int64(math.Round(vector[i] * precision))
 	}
 
 	return arrayInt64
 }
 
 // Float64ToInt642DArrayWithPrecision converts a 2D float64 array to a 2D int64 array with the given precision
-func Float64ToInt642DArrayWithPrecision(arrayFloat64 [][]float64, precision float64) [][]int64 {
-	k := len(arrayFloat64)
-
-	arrayInt64 := make([][]int64, k)
-	for i := 0; i < k; i++ {
-		arrayInt64[i] = Float64ToInt641DArrayWithPrecision(arrayFloat64[i], precision)
+func Float64ToInt642DArrayWithPrecision(matrix [][]float64, precision float64) [][]int64 {
+	ret := make([][]int64, len(matrix))
+	for i := range ret {
+		ret[i] = Float64ToInt641DArrayWithPrecision(matrix[i], precision)
 	}
 
-	return arrayInt64
+	return ret
 }
 
 // Round rounds a float number to the nearest <unit> digits

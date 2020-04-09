@@ -2,6 +2,9 @@ package libdrynxencoding_test
 
 import (
 	"fmt"
+	"math"
+	"testing"
+
 	"github.com/cdipaolo/goml/base"
 	"github.com/cdipaolo/goml/linear"
 	"github.com/ldsec/drynx/lib"
@@ -12,9 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/util/key"
+	"gonum.org/v1/gonum/mat"
 	"gonum.org/v1/gonum/stat/combin"
-	"math"
-	"testing"
 )
 
 func TestComputeApproxCoefficients(t *testing.T) {
@@ -181,10 +183,12 @@ func TestCombinationsWithRepetitionEfficient(t *testing.T) {
 
 func TestAggregateEncryptedApproxCoefficients(t *testing.T) {
 	// data providers data
-	X := [][]float64{{0, 1, 2, 3, 4}, {0, 1, 2, 3, 4}}
-	y := []int64{1, 1}
+	X := mat.NewDense(2, 5, nil)
+	X.SetRow(0, []float64{0, 1, 2, 3, 4})
+	X.SetRow(1, []float64{0, 1, 2, 3, 4})
+	y := mat.NewVecDense(2, []float64{1, 1})
 	k := 1
-	N := len(X)
+	N := y.Len()
 
 	keys := key.NewKeyPair(libunlynx.SuiTe)
 	privKey, pubKey := keys.Private, keys.Public
@@ -194,7 +198,7 @@ func TestAggregateEncryptedApproxCoefficients(t *testing.T) {
 
 	// compute the approximation coefficients and encrypt them
 	for i := 0; i < N; i++ {
-		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X[i], y[i], k)
+		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(i), int64(y.AtVec(i)), k)
 		encryptedApproxCoefficients[i], _ = libdrynxencoding.ComputeEncryptedApproxCoefficients(
 			libdrynxencoding.Float64ToInt642DArray(approxCoefficients[i]), pubKey)
 	}
@@ -213,11 +217,11 @@ func TestAggregateEncryptedApproxCoefficients(t *testing.T) {
 func TestPredictWithInt(t *testing.T) {
 
 	// integer weights
-	X := []float64{0, 1, 2, 3, 4}
+	X := mat.NewVecDense(5, []float64{0, 1, 2, 3, 4})
 	keys := key.NewKeyPair(libunlynx.SuiTe)
 	privKey, pubKey := keys.Private, keys.Public
 	libunlynx.CreateDecryptionTable(10000, pubKey, privKey)
-	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.Float64ToInt641DArray(X))
+	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.VecToInt641DArray(X))
 	precision := 1e1
 
 	weights := []float64{1, 2, 3, 4, 5, 6}
@@ -227,10 +231,10 @@ func TestPredictWithInt(t *testing.T) {
 }
 
 func TestPredictWithFloat(t *testing.T) {
-	X := []float64{0, 1, 2, 3, 4}
+	X := mat.NewVecDense(5, []float64{0, 1, 2, 3, 4})
 	keys := key.NewKeyPair(libunlynx.SuiTe)
 	privKey, pubKey := keys.Private, keys.Public
-	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.Float64ToInt641DArray(X))
+	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.VecToInt641DArray(X))
 	precision := 1e1
 
 	// used to defined the maximal error allowed (?)
@@ -268,10 +272,10 @@ func TestPredictWithFloat(t *testing.T) {
 
 func TestPredictWithIntHomomorphic(t *testing.T) {
 	// integer weights
-	X := []float64{0, 1, 2, 3, 4}
+	X := mat.NewVecDense(5, []float64{0, 1, 2, 3, 4})
 	keys := key.NewKeyPair(libunlynx.SuiTe)
 	privKey, pubKey := keys.Private, keys.Public
-	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.Float64ToInt641DArray(X))
+	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.VecToInt641DArray(X))
 
 	weights := []float64{1, 2, 3, 4, 5, 6}
 	actual := libdrynxencoding.PredictHomomorphic(*encryptedData, weights, privKey, 1, 1)
@@ -281,10 +285,10 @@ func TestPredictWithIntHomomorphic(t *testing.T) {
 }
 
 func TestPredictWithFloatHomomorphic(t *testing.T) {
-	X := []float64{1, 2, 6, 5, 5}
+	X := mat.NewVecDense(5, []float64{1, 2, 6, 5, 5})
 	keys := key.NewKeyPair(libunlynx.SuiTe)
 	privKey, pubKey := keys.Private, keys.Public
-	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.Float64ToInt641DArray(X))
+	encryptedData := libunlynx.EncryptIntVector(pubKey, libdrynxencoding.VecToInt641DArray(X))
 
 	// used to defined the maximal error allowed (?)
 	ratio := 0.01
@@ -344,18 +348,16 @@ func TestInt64ToFloat642DArray(t *testing.T) {
 }
 
 func TestGradient(t *testing.T) {
-	X := [][]float64{{1, 2, 3, 4, 5}}
-	y := []int64{1}
-	k := 1
-	N := len(X) //len(X[0]) * 10
-	N64 := int64(N)
+	X := mat.NewDense(1, 5, []float64{1, 2, 3, 4, 5})
+	y := mat.NewVecDense(1, []float64{1})
+	k, N := 1, y.Len()
 
 	lambda := 10.0
 	step := 0.0001
 	maxIterations := 100000
 
 	weights := []float64{0.1, 0.2, 0.3, 0.4, 0.5}
-	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X[0], y[0], k)
+	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(0), int64(y.AtVec(0)), k)
 
 	// libdrynxencoding.Gradient for k = 1
 	expected := make([]float64, len(weights))
@@ -365,20 +367,23 @@ func TestGradient(t *testing.T) {
 			expected[i] += (lambda / float64(N)) * weights[i]
 		}
 	}
-	actual := libdrynxencoding.Gradient(weights, approxCoeffs, k, N64, lambda)
+	actual := libdrynxencoding.Gradient(weights, approxCoeffs, k, int64(N), lambda)
 	assert.Equal(t, expected[1:], actual[1:])
 
 	// libdrynxencoding.Gradient for k = 2
 	k = 2
-	approxCoeffs = libdrynxencoding.ComputeAllApproxCoefficients(X[0], y[0], k)
+	approxCoeffs = libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(0), int64(y.AtVec(0)), k)
 
 	expected = libdrynxencoding.GradientFor2(weights, approxCoeffs, k, N, lambda)
-	actual = libdrynxencoding.Gradient(weights, approxCoeffs, k, N64, lambda)
+	actual = libdrynxencoding.Gradient(weights, approxCoeffs, k, int64(N), lambda)
 	assert.Equal(t, expected[1:], actual[1:])
 
 	testX := make([][]float64, 1)
-	testX[0] = X[0][1:]
-	testY := []float64{float64(y[0])}
+	testX[0] = make([]float64, N-1)
+	for i := range testX[0] {
+		testX[0][i] = X.At(0, i+1)
+	}
+	testY := []float64{float64(y.AtVec(0))}
 	model := linear.NewLogistic(base.BatchGA, step, lambda, maxIterations, testX, testY)
 	fmt.Println(model.Learn())
 	for j := 0; j < len(weights); j++ {
@@ -387,15 +392,13 @@ func TestGradient(t *testing.T) {
 }
 
 func TestCost(t *testing.T) {
-	X := [][]float64{{1, 0, 1, 2, 3, 4}}
-	y := []int64{1}
-	k := 1
-	N := len(X)
-	N64 := int64(N)
+	X := mat.NewDense(1, 6, []float64{1, 0, 1, 2, 3, 4})
+	y := mat.NewVecDense(1, []float64{1})
+	k, N := X.Dims()
 
 	lambda := 1.0
 
-	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X[0], y[0], k)
+	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(0), int64(y.AtVec(0)), k)
 	allApproxCoeffs := make([][][]float64, N)
 	allApproxCoeffs[0] = approxCoeffs
 	aggregatedApproxCoeffs := libdrynxencoding.AggregateApproxCoefficients(allApproxCoeffs)
@@ -414,14 +417,14 @@ func TestCost(t *testing.T) {
 		expectedCost += weights[i] * weights[i] * (lambda / 2 * float64(N))
 	}
 
-	actuaCost := libdrynxencoding.Cost(weights, aggregatedApproxCoeffs, N64, lambda)
+	actuaCost := libdrynxencoding.Cost(weights, aggregatedApproxCoeffs, int64(N), lambda)
 
 	assert.Equal(t, expectedCost, actuaCost)
 }
 
 func TestLogisticCost(t *testing.T) {
-	X := [][]float64{{1.0, 0.0, 1.0, 2.0, 3.0, 4.0}}
-	y := []int64{1}
+	X := mat.NewDense(1, 6, []float64{1, 0, 1, 2, 3, 4})
+	y := mat.NewVecDense(1, []float64{1})
 	N := int64(1)
 
 	lambda := 1.0
@@ -433,11 +436,11 @@ func TestLogisticCost(t *testing.T) {
 }
 
 func TestFindMinimumWeightsDegreeOne(t *testing.T) {
-	X := [][]float64{{1, 0, 1, 2, 3, 4}}
-	y := []int64{1}
+	X := mat.NewDense(1, 6, []float64{1, 0, 1, 2, 3, 4})
+	y := mat.NewVecDense(1, []float64{1})
 	k := 1
-	N := int64(len(X))
-	d := len(X[0]) - 1
+	_, N := X.Dims()
+	d := N - 1
 
 	lambda := 10.0
 	step := 0.0001
@@ -448,13 +451,13 @@ func TestFindMinimumWeightsDegreeOne(t *testing.T) {
 		initialWeights[i] = 0.1
 	}
 
-	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X[0], y[0], k)
+	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(0), int64(y.AtVec(0)), k)
 	allApproxCoeffs := make([][][]float64, N)
 	allApproxCoeffs[0] = approxCoeffs
 	aggregatedApproxCoeffs := libdrynxencoding.AggregateApproxCoefficients(allApproxCoeffs)
 
 	expectedWeights := libdrynxencoding.ComputeMinimumWeights(aggregatedApproxCoeffs, lambda)
-	actualWeights := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoeffs, initialWeights, N, lambda, step,
+	actualWeights := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoeffs, initialWeights, int64(N), lambda, step,
 		maxIterations)
 
 	// cheating
@@ -472,42 +475,45 @@ func TestFindMinimumWeightsDegreeOne(t *testing.T) {
 	fmt.Println("actual weights:", actualWeights)
 	fmt.Println("max effective epsilon:", maxEpsilon)
 
-	costActualWeights := libdrynxencoding.Cost(actualWeights, aggregatedApproxCoeffs, N, lambda)
-	costExpectedWeights := libdrynxencoding.Cost(expectedWeights, aggregatedApproxCoeffs, N, lambda)
+	costActualWeights := libdrynxencoding.Cost(actualWeights, aggregatedApproxCoeffs, int64(N), lambda)
+	costExpectedWeights := libdrynxencoding.Cost(expectedWeights, aggregatedApproxCoeffs, int64(N), lambda)
 	fmt.Println("libdrynxencoding.Cost expected weights:", costExpectedWeights)
 	fmt.Println("libdrynxencoding.Cost actual weights:", costActualWeights)
 
 	testX := make([][]float64, 1)
-	testX[0] = X[0][1:]
-	testY := []float64{float64(y[0])}
+	testX[0] = make([]float64, N-1)
+	for i := range testX[0] {
+		testX[0][i] = X.At(0, i+1)
+	}
+	testY := []float64{float64(y.AtVec(0))}
 	model := linear.NewLogistic(base.BatchGA, step, lambda, maxIterations, testX, testY)
 	fmt.Println(model.Learn())
 }
 
 func TestFindMinimumWeights(t *testing.T) {
-	X := [][]float64{{1, 0, 1, 2, 3, 4}}
-	y := []int64{1}
+	X := mat.NewDense(1, 6, []float64{1, 0, 1, 2, 3, 4})
+	y := mat.NewVecDense(1, []float64{1})
 	k := 2
-	N := int64(len(X))
+	_, N := X.Dims()
 
 	lambda := 1.0
 	step := 0.001
 	maxIterations := 100000
 
-	initialWeights := make([]float64, len(X[0]))
-	for i := 0; i < len(initialWeights); i++ {
+	initialWeights := make([]float64, N)
+	for i := range initialWeights {
 		initialWeights[i] = 0.2
 	}
 
-	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X[0], y[0], k)
+	approxCoeffs := libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(0), int64(y.AtVec(0)), k)
 
 	allApproxCoeffs := make([][][]float64, N)
 	allApproxCoeffs[0] = approxCoeffs
 	aggregatedApproxCoeffs := libdrynxencoding.AggregateApproxCoefficients(allApproxCoeffs)
 
-	weights := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoeffs, initialWeights, N, lambda, step, maxIterations)
-	Cost := libdrynxencoding.Cost(weights, aggregatedApproxCoeffs, N, lambda)
-	logisticCost := libdrynxencoding.LogisticRegressionCost(weights, X, y, N, lambda)
+	weights := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoeffs, initialWeights, int64(N), lambda, step, maxIterations)
+	Cost := libdrynxencoding.Cost(weights, aggregatedApproxCoeffs, int64(N), lambda)
+	logisticCost := libdrynxencoding.LogisticRegressionCost(weights, X, y, int64(N), lambda)
 
 	fmt.Println("approx. coeffs.:", approxCoeffs)
 	fmt.Println("weights:", weights)
@@ -516,14 +522,17 @@ func TestFindMinimumWeights(t *testing.T) {
 	fmt.Println()
 
 	testX := make([][]float64, 1)
-	testX[0] = X[0][1:]
-	testY := []float64{float64(y[0])}
+	testX[0] = make([]float64, N-1)
+	for i := range testX[0] {
+		testX[0][i] = X.At(0, i+1)
+	}
+	testY := []float64{float64(y.AtVec(0))}
 	model := linear.NewLogistic(base.BatchGA, step, lambda, maxIterations, testX, testY)
 
 	fmt.Println(model.Learn())
 	weightsPackage := []float64{0.035, 0.00000, 0.03712, 0.07425, 0.11137, 0.14849}
-	fmt.Println("libdrynxencoding.Cost:", libdrynxencoding.Cost(weightsPackage, approxCoeffs, N, lambda))
-	fmt.Println("logistic libdrynxencoding.Cost:", libdrynxencoding.LogisticRegressionCost(weightsPackage, X, y, N, lambda))
+	fmt.Println("libdrynxencoding.Cost:", libdrynxencoding.Cost(weightsPackage, approxCoeffs, int64(N), lambda))
+	fmt.Println("logistic libdrynxencoding.Cost:", libdrynxencoding.LogisticRegressionCost(weightsPackage, X, y, int64(N), lambda))
 }
 
 func TestRange(t *testing.T) {
@@ -574,29 +583,22 @@ func TestAddSub(t *testing.T) {
 
 func TestEncodeDecodeLogisticRegression(t *testing.T) {
 	// data
-	data := [][]float64{{0, 1.3, 5.0, 3.4, 3.2},
-		{1, 2.0, 4.4, 4.2, 3.3},
-		{1, 1.2, 1.9, 3.8, 2.3},
-		{0, 1.0, 4.5, 2.2, 3.8},
-		{1, 1.7, 2.8, 3.8, 2.7}}
+	X := mat.NewDense(5, 4, nil)
+	X.SetRow(0, []float64{1.3, 5.0, 3.4, 3.2})
+	X.SetRow(1, []float64{2.0, 4.4, 4.2, 3.3})
+	X.SetRow(2, []float64{1.2, 1.9, 3.8, 2.3})
+	X.SetRow(3, []float64{1.0, 4.5, 2.2, 3.8})
+	X.SetRow(4, []float64{1.7, 2.8, 3.8, 2.7})
 
-	labelColumn := uint(0)
+	y := mat.NewVecDense(5, []float64{0, 1, 1, 0, 1})
 
-	// features
-	X, err := libdrynxencoding.RemoveColumn(data, labelColumn)
-	require.NoError(t, err)
-	// labels
-	yFloat, err := libdrynxencoding.GetColumn(data, labelColumn)
-	require.NoError(t, err)
-	y := libdrynxencoding.Float64ToInt641DArray(yFloat)
+	XLocal := mat.NewDense(5, 4, nil)
+	XLocal.Copy(X)
 
-	XStandardised, err := libdrynxencoding.Standardise(X)
-	require.NoError(t, err)
-	XStandardised = libdrynxencoding.Augment(XStandardised)
+	libdrynxencoding.Standardise(X)
+	libdrynxencoding.Augment(X)
 
-	N := len(X)
-	N64 := int64(N)
-	d := int64(len(X[0]))
+	N, d := X.Dims()
 
 	k := 2
 	precision := 1e2
@@ -612,19 +614,19 @@ func TestEncodeDecodeLogisticRegression(t *testing.T) {
 
 	// compute all approximation coefficients per record
 	approxCoefficients := make([][][]float64, N)
-	for i := range X {
-		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(XStandardised[i], y[i], k)
+	for i := range approxCoefficients {
+		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(i), int64(y.AtVec(i)), k)
 	}
 
 	// aggregate the approximation coefficients locally
 	aggregatedApproxCoefficients := libdrynxencoding.AggregateApproxCoefficients(approxCoefficients)
 
-	expected := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoefficients, initialWeights, N64, lambda, step,
+	expected := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoefficients, initialWeights, int64(N), lambda, step,
 		maxIterations)
 
 	initialWeights = []float64{0.1, 0.2, 0.3, 0.4, 0.5} // libdrynxencoding.FindMinimumWeights modifies the initial weights...
 
-	lrParameters := libdrynx.LogisticRegressionParameters{FilePath: "", NbrRecords: N64, NbrFeatures: d, Lambda: lambda, Step: step, MaxIterations: maxIterations,
+	lrParameters := libdrynx.LogisticRegressionParameters{FilePath: "", NbrRecords: int64(N), NbrFeatures: int64(d), Lambda: lambda, Step: step, MaxIterations: maxIterations,
 		InitialWeights: initialWeights, K: 2, PrecisionApproxCoefficients: precision}
 
 	resultEncrypted, _, err := libdrynxencoding.EncodeLogisticRegression(X, y, lrParameters, pubKey)
@@ -642,29 +644,22 @@ func TestEncodeDecodeLogisticRegression(t *testing.T) {
 
 func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 	// data
-	data := [][]float64{{0, 1.3, 5.0, 3.4, 3.2},
-		{1, 2.0, 4.4, 4.2, 3.3},
-		{1, 1.2, 1.9, 3.8, 2.3},
-		{0, 1.0, 4.5, 2.2, 3.8},
-		{1, 1.7, 2.8, 3.8, 2.7}}
+	X := mat.NewDense(5, 4, nil)
+	X.SetRow(0, []float64{1.3, 5.0, 3.4, 3.2})
+	X.SetRow(1, []float64{2.0, 4.4, 4.2, 3.3})
+	X.SetRow(2, []float64{1.2, 1.9, 3.8, 2.3})
+	X.SetRow(3, []float64{1.0, 4.5, 2.2, 3.8})
+	X.SetRow(4, []float64{1.7, 2.8, 3.8, 2.7})
 
-	labelColumn := uint(0)
+	y := mat.NewVecDense(5, []float64{0, 1, 1, 0, 1})
 
-	// features
-	X, err := libdrynxencoding.RemoveColumn(data, labelColumn)
-	require.NoError(t, err)
-	// labels
-	yFloat, err := libdrynxencoding.GetColumn(data, labelColumn)
-	require.NoError(t, err)
-	y := libdrynxencoding.Float64ToInt641DArray(yFloat)
+	XLocal := mat.NewDense(5, 4, nil)
+	XLocal.Copy(X)
 
-	XStandardised, err := libdrynxencoding.Standardise(X)
-	require.NoError(t, err)
-	XStandardised = libdrynxencoding.Augment(XStandardised)
+	libdrynxencoding.Standardise(X)
+	libdrynxencoding.Augment(X)
 
-	N := len(X)
-	N64 := int64(N)
-	d := int64(len(X[0]))
+	N, d := X.Dims()
 
 	k := 2
 	precision := 1e2
@@ -680,19 +675,19 @@ func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 
 	// compute all approximation coefficients per record
 	approxCoefficients := make([][][]float64, N)
-	for i := range X {
-		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(XStandardised[i], y[i], k)
+	for i := range approxCoefficients {
+		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(i), int64(y.AtVec(i)), k)
 	}
 
 	// aggregate the approximation coefficients locally
 	aggregatedApproxCoefficients := libdrynxencoding.AggregateApproxCoefficients(approxCoefficients)
 
-	expected := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoefficients, initialWeights, N64, lambda, step,
+	expected := libdrynxencoding.FindMinimumWeights(aggregatedApproxCoefficients, initialWeights, int64(N), lambda, step,
 		maxIterations)
 
 	initialWeights = []float64{0.1, 0.2, 0.3, 0.4, 0.5} // libdrynxencoding.FindMinimumWeights modifies the initial weights...
 
-	lrParameters := libdrynx.LogisticRegressionParameters{FilePath: "", NbrRecords: N64, NbrFeatures: d, Lambda: lambda, Step: step, MaxIterations: maxIterations,
+	lrParameters := libdrynx.LogisticRegressionParameters{FilePath: "", NbrRecords: int64(N), NbrFeatures: int64(d), Lambda: lambda, Step: step, MaxIterations: maxIterations,
 		InitialWeights: initialWeights, K: 2, PrecisionApproxCoefficients: precision}
 
 	//signatures needed to check the proof; create signatures for 2 servers and all DPs outputs
@@ -740,32 +735,28 @@ func TestEncodeDecodeLogisticRegressionWithProofs(t *testing.T) {
 }
 
 func TestStandardise(t *testing.T) {
-	X := [][]float64{
-		{1.3, 5.0, 3.4, 3.2},
-		{2.0, 4.4, 4.2, 3.3},
-		{1.2, 1.9, 3.8, 2.3},
-		{1.0, 4.5, 2.2, 3.8},
-		{1.7, 2.8, 3.8, 2.7}}
+	X := mat.NewDense(5, 4, nil)
+	X.SetRow(0, []float64{1.3, 5.0, 3.4, 3.2})
+	X.SetRow(1, []float64{2.0, 4.4, 4.2, 3.3})
+	X.SetRow(2, []float64{1.2, 1.9, 3.8, 2.3})
+	X.SetRow(3, []float64{1.0, 4.5, 2.2, 3.8})
+	X.SetRow(4, []float64{1.7, 2.8, 3.8, 2.7})
 
 	factor := 10.0
-	XScaled := make([][]float64, len(X))
 
-	for i := 0; i < len(X); i++ {
-		XScaled[i] = make([]float64, len(X[i]))
-		for j := 0; j < len(X[i]); j++ {
-			XScaled[i][j] = factor * X[i][j]
-		}
-	}
+	XScaled := mat.NewDense(5, 4, nil)
+	XScaled.Apply(func(i, j int, v float64) float64 {
+		return factor * X.At(i, j)
+	}, X)
 
-	XStandardised, err := libdrynxencoding.Standardise(X)
-	require.NoError(t, err)
-	XScaledStandardised, err := libdrynxencoding.Standardise(XScaled)
-	require.NoError(t, err)
+	libdrynxencoding.Standardise(X)
+	libdrynxencoding.Standardise(XScaled)
 
 	epsilon := 1e-12
-	for i := 0; i < len(XStandardised); i++ {
-		for j := 0; j < len(XStandardised[i]); j++ {
-			assert.Equal(t, true, math.Abs(XStandardised[i][j]-XScaledStandardised[i][j]) < epsilon)
+	rowCount, columnCount := X.Dims()
+	for i := 0; i < rowCount; i++ {
+		for j := 0; j < columnCount; j++ {
+			assert.InEpsilon(t, X.At(i, j), XScaled.At(i, j), epsilon)
 		}
 	}
 

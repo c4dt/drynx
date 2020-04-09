@@ -2,6 +2,9 @@ package libdrynxencoding_test
 
 import (
 	"fmt"
+	"math"
+	"testing"
+
 	"github.com/cdipaolo/goml/base"
 	"github.com/cdipaolo/goml/linear"
 	"github.com/ldsec/drynx/lib/encoding"
@@ -10,8 +13,7 @@ import (
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/util/key"
 	"go.dedis.ch/onet/v3/log"
-	"math"
-	"testing"
+	"gonum.org/v1/gonum/mat"
 )
 
 type preprocessing uint
@@ -35,20 +37,17 @@ type MinimisationParameters struct {
 	initialWeights []float64
 }
 
-func compareFindMinimumWeights(Xtrain [][]float64, ytrain []int64, parameters MinimisationParameters,
+func compareFindMinimumWeights(Xtrain *mat.Dense, ytrain *mat.VecDense, parameters MinimisationParameters,
 	preprocessing preprocessing, withEncryption bool, precisionApproxCoefficients float64, paperWeights []float64) error {
 
-	N := int64(len(Xtrain))
+	N := int64(ytrain.Len())
 	k := parameters.k
 	lambda := parameters.lambda
 	step := parameters.step
 	maxIterations := parameters.maxIterations
 	initialWeights := parameters.initialWeights
-	Xtrain, err := libdrynxencoding.Standardise(Xtrain)
-	if err != nil {
-		return err
-	}
-	Xtrain = libdrynxencoding.Augment(Xtrain)
+	libdrynxencoding.Standardise(Xtrain)
+	libdrynxencoding.Augment(Xtrain)
 	// data providers part + servers part + client part collapsed here for testing
 
 	var weights []float64
@@ -79,14 +78,14 @@ func compareFindMinimumWeights(Xtrain [][]float64, ytrain []int64, parameters Mi
 	return nil
 }
 
-func findMinimumWeights(X [][]float64, y []int64, k int, maxIterations int, step float64, lambda float64, initialWeights []float64) ([]float64, [][]float64) {
+func findMinimumWeights(X *mat.Dense, y mat.Vector, k int, maxIterations int, step float64, lambda float64, initialWeights []float64) ([]float64, [][]float64) {
 
 	// each data provider computes its approximation coefficients on its side and then sends them to its chosen server
-	N := len(X)
+	N := y.Len()
 	N64 := int64(N)
 	approxCoefficients := make([][][]float64, N)
-	for i := range X {
-		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X[i], y[i], k)
+	for i := range approxCoefficients {
+		approxCoefficients[i] = libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(i), int64(y.AtVec(i)), k)
 	}
 	aggregatedApproxCoefficients := libdrynxencoding.AggregateApproxCoefficients(approxCoefficients)
 
@@ -99,20 +98,19 @@ func findMinimumWeights(X [][]float64, y []int64, k int, maxIterations int, step
 	return weights, aggregatedApproxCoefficients
 }
 
-func findMinimumWeightsWithEncryption(X [][]float64, y []int64, k int, maxIterations int, step float64, lambda float64,
+func findMinimumWeightsWithEncryption(X *mat.Dense, y mat.Vector, k int, maxIterations int, step float64, lambda float64,
 	initialWeights []float64, pubKey kyber.Point, privKey kyber.Scalar,
 	precisionApproxCoefficients float64) ([]float64, [][]float64) {
 
 	// each data provider computes its approximation coefficients on its side, encrypts them,
 	// and then sends them to its chosen server
-	N := int64(len(X))
+	N := int64(y.Len())
 
 	approxCoefficients := make([][][]int64, N)
-
 	encryptedApproxCoefficients := make([][]*libunlynx.CipherVector, N)
-	for i := range X {
+	for i := range approxCoefficients {
 		approxCoefficients[i] = libdrynxencoding.Float64ToInt642DArrayWithPrecision(
-			libdrynxencoding.ComputeAllApproxCoefficients(X[i], y[i], k),
+			libdrynxencoding.ComputeAllApproxCoefficients(X.RowView(i), int64(y.AtVec(i)), k),
 			precisionApproxCoefficients)
 
 		encryptedApproxCoefficients[i], _ = libdrynxencoding.ComputeEncryptedApproxCoefficients(approxCoefficients[i], pubKey)
@@ -131,8 +129,8 @@ func findMinimumWeightsWithEncryption(X [][]float64, y []int64, k int, maxIterat
 	return weights, aggregatedApproxCoefficients
 }
 
-func predict(Xtrain [][]float64, ytrain []int64,
-	Xtest [][]float64, yTest []int64,
+func predict(Xtrain *mat.Dense, ytrain mat.Vector,
+	Xtest *mat.Dense, yTest mat.Vector,
 	weights []float64,
 	parameters MinimisationParameters,
 	preprocessing preprocessing, withEncryption bool,
@@ -151,11 +149,8 @@ func predict(Xtrain [][]float64, ytrain []int64,
 	XtrainSaved := Xtrain
 
 	// data pre-processing
-	Xtrain, err := libdrynxencoding.Standardise(Xtrain)
-	if err != nil {
-		return 0, 0, 0, 0, 0, err
-	}
-	Xtrain = libdrynxencoding.Augment(Xtrain)
+	libdrynxencoding.Standardise(Xtrain)
+	libdrynxencoding.Augment(Xtrain)
 
 	// the client's (public key, private key) pair
 	keys := key.NewKeyPair(libunlynx.SuiTe)
@@ -186,21 +181,24 @@ func predict(Xtrain [][]float64, ytrain []int64,
 	// prediction computation
 	// standardise the testing set using the mean and standard deviation of the training set
 	if preprocessing == PREPROCESSING_STANDARDIZE {
-		Xtest, err = libdrynxencoding.StandardiseWithTrain(Xtest, XtrainSaved)
+		libdrynxencoding.StandardiseWithTrain(Xtest, XtrainSaved)
 	} else if preprocessing == PREPROCESSING_NORMALIZE {
-		Xtest, err = libdrynxencoding.NormalizeWith(Xtest, XtrainSaved)
-	}
-	if err != nil {
-		return 0, 0, 0, 0, 0, err
+		libdrynxencoding.NormalizeWith(Xtest, XtrainSaved)
 	}
 	// note: the test data does not need to be augmented with 1s
 
-	predictions := make([]int64, len(Xtest))
-	predictionsFloat := make([]float64, len(Xtest))
+	predictions := make([]int64, yTest.Len())
+	predictionsFloat := make([]float64, yTest.Len())
 	if withEncryption {
-		for i := range Xtest {
+		for i := range predictions {
+			rawRow := Xtest.RowView(i)
+			row := make([]float64, rawRow.Len())
+			for j := range row {
+				row[j] = rawRow.AtVec(i)
+			}
+
 			encryptedData := libunlynx.EncryptIntVector(pubKey,
-				libdrynxencoding.Float64ToInt641DArrayWithPrecision(Xtest[i], precisionData))
+				libdrynxencoding.Float64ToInt641DArrayWithPrecision(row, precisionData))
 
 			predictionsFloat[i] = libdrynxencoding.PredictHomomorphic(*encryptedData,
 				weights,
@@ -210,36 +208,44 @@ func predict(Xtrain [][]float64, ytrain []int64,
 			predictions[i] = int64(math.Round(predictionsFloat[i])) //todo: define threshold parameter
 
 			predict := libdrynxencoding.Predict(*libunlynx.EncryptIntVector(pubKey,
-				libdrynxencoding.Float64ToInt641DArrayWithPrecision(Xtest[i], precisionData)),
+				libdrynxencoding.Float64ToInt641DArrayWithPrecision(row, precisionData)),
 				weights,
 				privKey,
 				precisionWeights, precisionData)
 
 			predictHomomorphic := libdrynxencoding.PredictHomomorphic(
 				*libunlynx.EncryptIntVector(pubKey,
-					libdrynxencoding.Float64ToInt641DArrayWithPrecision(Xtest[i], precisionData)),
+					libdrynxencoding.Float64ToInt641DArrayWithPrecision(row, precisionData)),
 				weights,
 				privKey,
 				precisionWeights, precisionData)
 
-			predictClear := libdrynxencoding.PredictInClear(Xtest[i], weights)
+			predictClear := libdrynxencoding.PredictInClear(rawRow, weights)
 
-			fmt.Printf("%12.8e %12.8e %12.8e %1d %2d\n", predictClear, predict, predictHomomorphic, predictions[i],
-				yTest[i])
+			fmt.Printf("%12.8e %12.8e %12.8e %1d %2e\n", predictClear, predict, predictHomomorphic, predictions[i],
+				yTest.AtVec(i))
 		}
 	} else {
-		for i := range Xtest {
-			predictionsFloat[i] = libdrynxencoding.PredictInClear(Xtest[i], weights)
+		rowCount, _ := Xtest.Dims()
+		for i := 0; i < rowCount; i++ {
+			row := Xtest.RowView(i)
+
+			predictionsFloat[i] = libdrynxencoding.PredictInClear(row, weights)
 			predictions[i] = int64(math.Round(predictionsFloat[i]))
-			fmt.Printf("%12.8e %1d %2d\n", libdrynxencoding.PredictInClear(Xtest[i], weights), predictions[i], yTest[i])
+			fmt.Printf("%12.8e %1d %2e\n", libdrynxencoding.PredictInClear(row, weights), predictions[i], yTest.AtVec(i))
 		}
 	}
 
-	accuracy := libdrynxencoding.Accuracy(predictions, yTest)
-	precision := libdrynxencoding.Precision(predictions, yTest)
-	recall := libdrynxencoding.Recall(predictions, yTest)
-	fscore := libdrynxencoding.Fscore(predictions, yTest)
-	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, yTest)
+	yTestInts := make([]int64, yTest.Len())
+	for i := range yTestInts {
+		yTestInts[i] = int64(yTest.AtVec(i))
+	}
+
+	accuracy := libdrynxencoding.Accuracy(predictions, yTestInts)
+	precision := libdrynxencoding.Precision(predictions, yTestInts)
+	recall := libdrynxencoding.Recall(predictions, yTestInts)
+	fscore := libdrynxencoding.Fscore(predictions, yTestInts)
+	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, yTestInts)
 
 	log.Lvl2("accuracy: ", accuracy)
 	log.Lvl2("precision:", precision)
@@ -257,7 +263,7 @@ func predict(Xtrain [][]float64, ytrain []int64,
 	return accuracy, precision, recall, fscore, auc, nil
 }
 
-func predictWithRandomSplit(X [][]float64, y []int64, weights []float64,
+func predictWithRandomSplit(X *mat.Dense, y *mat.VecDense, weights []float64,
 	ratio float64, parameters MinimisationParameters, preprocessing preprocessing, precisionApproxCoefficients float64,
 	precisionData float64, precisionWeights float64, withEncryption bool, numberTrials int, initSeed int64) error {
 
@@ -277,8 +283,8 @@ func predictWithRandomSplit(X [][]float64, y []int64, weights []float64,
 		seed := initSeed + int64(i)
 		Xtrain, ytrain, Xtest, ytest := libdrynxencoding.PartitionDataset(X, y, ratio, true, seed)
 
-		log.Lvl2("training set:", len(Xtrain))
-		log.Lvl2("testing set: ", len(Xtest))
+		log.Lvl2("training set:", ytrain.Len())
+		log.Lvl2("testing set: ", ytest.Len())
 
 		var err error
 		accuracy[i], precision[i], recall[i], fscore[i], auc[i], err = predict(Xtrain, ytrain, Xtest, ytest, weights,
@@ -313,7 +319,7 @@ func predictWithRandomSplit(X [][]float64, y []int64, weights []float64,
 	return nil
 }
 
-func predictGoml(X [][]float64, y []int64, ratio float64, parameters MinimisationParameters, numberTrials int, initSeed int64) {
+func predictGoml(X *mat.Dense, y *mat.VecDense, ratio float64, parameters MinimisationParameters, numberTrials int, initSeed int64) {
 
 	meanAccuracy := 0.0
 	meanPrecision := 0.0
@@ -326,24 +332,44 @@ func predictGoml(X [][]float64, y []int64, ratio float64, parameters Minimisatio
 		seed := initSeed + int64(i)
 		Xtrain, ytrain, Xtest, ytest := libdrynxencoding.PartitionDataset(X, y, ratio, true, seed)
 
-		model := linear.NewLogistic(base.BatchGA, parameters.step, parameters.lambda, parameters.maxIterations, Xtrain, libdrynxencoding.Int64ToFloat641DArray(ytrain))
+		rowCount, columnCount := Xtrain.Dims()
+		trainMatrix := make([][]float64, rowCount)
+		trainVector := make([]float64, rowCount)
+		for i := range trainVector {
+			row := make([]float64, columnCount)
+			for j := range row {
+				row[j] = Xtrain.At(i, j)
+			}
+			trainVector[i] = ytrain.AtVec(i)
+		}
+
+		model := linear.NewLogistic(base.BatchGA, parameters.step, parameters.lambda, parameters.maxIterations, trainMatrix, trainVector)
 
 		log.Lvl2(model.Learn())
 
-		predictions := make([]int64, len(Xtest))
-		predictionsFloat := make([]float64, len(Xtest))
-		for i := range Xtest {
-			result, _ := model.Predict(Xtest[i], false)
+		predictions := make([]int64, rowCount)
+		predictionsFloat := make([]float64, rowCount)
+		for i := range predictions {
+			row := make([]float64, columnCount)
+			for j := range row {
+				row[j] = Xtest.At(i, j)
+			}
+
+			result, _ := model.Predict(row, false)
 
 			predictionsFloat[i] = result[0]
 			predictions[i] = int64(math.Round(predictionsFloat[i]))
 		}
+		results := make([]int64, rowCount)
+		for i := range results {
+			results[i] = int64(ytest.AtVec(i))
+		}
 
-		accuracy := libdrynxencoding.Accuracy(predictions, ytest)
-		precision := libdrynxencoding.Precision(predictions, ytest)
-		recall := libdrynxencoding.Recall(predictions, ytest)
-		fscore := libdrynxencoding.Fscore(predictions, ytest)
-		auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, ytest)
+		accuracy := libdrynxencoding.Accuracy(predictions, results)
+		precision := libdrynxencoding.Precision(predictions, results)
+		recall := libdrynxencoding.Recall(predictions, results)
+		fscore := libdrynxencoding.Fscore(predictions, results)
+		auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, results)
 
 		log.Lvl2("accuracy: ", accuracy)
 		log.Lvl2("precision:", precision)
@@ -550,8 +576,20 @@ func TestPredictForSPECTFWithGoml(t *testing.T) {
 	Xtest, ytest, err := libdrynxencoding.LoadData("SPECTF", SPECTFTesting)
 	require.NoError(t, err)
 
-	model := linear.NewLogistic(base.BatchGA, parameters.step, parameters.lambda, parameters.maxIterations, Xtrain,
-		libdrynxencoding.Int64ToFloat641DArray(ytrain))
+	rowCount, columnCount := Xtrain.Dims()
+	trainingSet := make([][]float64, rowCount)
+	trainingResults := make([]float64, rowCount)
+	for i := range trainingSet {
+		row := make([]float64, columnCount)
+		for j := range row {
+			row[j] = Xtrain.At(i, j)
+		}
+		trainingSet[i] = row
+		trainingResults[i] = ytrain.AtVec(i)
+	}
+
+	model := linear.NewLogistic(base.BatchGA, parameters.step, parameters.lambda, parameters.maxIterations, trainingSet,
+		trainingResults)
 	for i, v := range parameters.initialWeights {
 		parameters.initialWeights[i] = -v
 	}
@@ -559,19 +597,26 @@ func TestPredictForSPECTFWithGoml(t *testing.T) {
 
 	log.Lvl2(model.Learn())
 
-	predictions := make([]int64, len(Xtest))
-	predictionsFloat := make([]float64, len(Xtest))
-	for i := range Xtest {
-		result, _ := model.Predict(Xtest[i], false)
+	predictions := make([]int64, rowCount)
+	predictionsFloat := make([]float64, rowCount)
+	testResults := make([]int64, rowCount)
+	for i := range predictions {
+		row := make([]float64, columnCount)
+		for j := range row {
+			row[j] = Xtest.At(i, j)
+		}
+		testResults[i] = int64(ytest.AtVec(i))
+
+		result, _ := model.Predict(row, false)
 		predictionsFloat[i] = result[0]
 		predictions[i] = int64(math.Round(predictionsFloat[i]))
 	}
 
-	accuracy := libdrynxencoding.Accuracy(predictions, ytest)
-	precision := libdrynxencoding.Precision(predictions, ytest)
-	recall := libdrynxencoding.Recall(predictions, ytest)
-	fscore := libdrynxencoding.Fscore(predictions, ytest)
-	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, ytest)
+	accuracy := libdrynxencoding.Accuracy(predictions, testResults)
+	precision := libdrynxencoding.Precision(predictions, testResults)
+	recall := libdrynxencoding.Recall(predictions, testResults)
+	fscore := libdrynxencoding.Fscore(predictions, testResults)
+	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, testResults)
 
 	log.Lvl2("accuracy: ", accuracy)
 	log.Lvl2("precision:", precision)

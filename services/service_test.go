@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gonum.org/v1/gonum/mat"
 
 	"go.dedis.ch/cothority/v3"
 	"go.dedis.ch/cothority/v3/skipchain"
@@ -400,22 +401,18 @@ func TestServiceDrynxLogisticRegressionForSPECTF(t *testing.T) {
 	XTest, yTest, err := libdrynxencoding.LoadData("SPECTF", filePathTesting)
 	require.NoError(t, err)
 
-	var means = make([]float64, 0)
-	var standardDeviations = make([]float64, 0)
+	var means []float64
+	var standardDeviations []float64
 	if standardisationMode == 0 || standardisationMode == 1 {
-		means, err = libdrynxencoding.ComputeMeans(XTrain)
-		require.NoError(t, err)
-		standardDeviations, err = libdrynxencoding.ComputeStandardDeviations(XTrain)
-		require.NoError(t, err)
-	} else {
-		means = nil
-		standardDeviations = nil
+		means = libdrynxencoding.ComputeMeans(XTrain)
+		standardDeviations = libdrynxencoding.ComputeStandardDeviations(XTrain)
 	}
 
+	rowCount, columnCount := XTrain.Dims()
 	lrParameters.DatasetName = "SPECTF"
 	lrParameters.FilePath = filePathTraining
-	lrParameters.NbrRecords = int64(len(XTrain))
-	lrParameters.NbrFeatures = int64(len(XTrain[0]))
+	lrParameters.NbrRecords = int64(rowCount)
+	lrParameters.NbrFeatures = int64(columnCount)
 	lrParameters.Means = means
 	lrParameters.StandardDeviations = standardDeviations
 
@@ -838,41 +835,45 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 		XTrain, yTrain, XTest, yTest := libdrynxencoding.PartitionDataset(X, y, ratio, true, seed)
 
 		// write to file
-		trainingSet := libdrynxencoding.InsertColumn(XTrain, libdrynxencoding.Int64ToFloat641DArray(yTrain), 0)
-		testingSet := libdrynxencoding.InsertColumn(XTest, libdrynxencoding.Int64ToFloat641DArray(yTest), 0)
+		trainRowCount, trainColumnCount := XTrain.Dims()
+		trainingSet := mat.NewDense(trainRowCount, trainColumnCount, nil)
+		trainingSet.Augment(yTrain, trainingSet)
+
+		testRowCount, testColumnCount := XTest.Dims()
+		testingSet := mat.NewDense(testRowCount, testColumnCount, nil)
+		testingSet.Augment(yTest, testingSet)
 
 		fileTraining, err := os.Create(filePathTraining)
 		fileTesting, err := os.Create(filePathTesting)
 
-		for i := 0; i < len(trainingSet); i++ {
-			for j := 0; j < len(trainingSet[i])-1; j++ {
-				_, err = fileTraining.WriteString(fmt.Sprint(trainingSet[i][j]) + ",")
+		for i := 0; i < trainRowCount; i++ {
+			for j := 0; j < trainColumnCount-1; j++ {
+				_, err = fileTraining.WriteString(fmt.Sprint(trainingSet.At(i, j)) + ",")
+				require.NoError(t, err)
 			}
-			_, err = fileTraining.WriteString(fmt.Sprintln(trainingSet[i][len(trainingSet[i])-1]))
+			_, err = fileTraining.WriteString(fmt.Sprint(trainingSet.At(i, trainColumnCount-1)))
+			require.NoError(t, err)
 		}
 
-		for i := 0; i < len(testingSet); i++ {
-			for j := 0; j < len(testingSet[i])-1; j++ {
-				_, err = fileTesting.WriteString(fmt.Sprint(testingSet[i][j]) + ",")
+		for i := 0; i < testRowCount; i++ {
+			for j := 0; j < testColumnCount; j++ {
+				_, err = fileTesting.WriteString(fmt.Sprint(testingSet.At(i, j)) + ",")
+				require.NoError(t, err)
 			}
-			_, err = fileTesting.WriteString(fmt.Sprintln(testingSet[i][len(testingSet[i])-1]))
+			_, err = fileTesting.WriteString(fmt.Sprint(testingSet.At(i, testColumnCount-1)))
+			require.NoError(t, err)
 		}
 
-		var means = make([]float64, 0)
-		var standardDeviations = make([]float64, 0)
+		var means []float64
+		var standardDeviations []float64
 		if standardisationMode == 0 || standardisationMode == 1 {
-			means, err = libdrynxencoding.ComputeMeans(XTrain)
-			require.NoError(t, err)
-			standardDeviations, err = libdrynxencoding.ComputeStandardDeviations(XTrain)
-			require.NoError(t, err)
-		} else {
-			means = nil
-			standardDeviations = nil
+			means = libdrynxencoding.ComputeMeans(XTrain)
+			standardDeviations = libdrynxencoding.ComputeStandardDeviations(XTrain)
 		}
 
 		lrParameters.FilePath = filePathTraining
-		lrParameters.NbrRecords = int64(len(trainingSet))
-		lrParameters.NbrFeatures = int64(len(XTrain[0]))
+		lrParameters.NbrRecords = int64(trainRowCount)
+		lrParameters.NbrFeatures = int64(trainColumnCount)
 		lrParameters.Means = means
 		lrParameters.StandardDeviations = standardDeviations
 
@@ -996,7 +997,7 @@ func TestServiceDrynxLogisticRegression(t *testing.T) {
 	libdrynxencoding.PrintForLatex(meanAccuracy, meanPrecision, meanRecall, meanFscore, meanAUC)
 }
 
-func performanceEvaluation(weights []float64, XTest [][]float64, yTest []int64, means []float64,
+func performanceEvaluation(weights []float64, XTest *mat.Dense, yTest mat.Vector, means []float64,
 	standardDeviations []float64) (float64,
 	float64, float64, float64, float64, error) {
 	fmt.Println("weights:", weights)
@@ -1005,30 +1006,32 @@ func performanceEvaluation(weights []float64, XTest [][]float64, yTest []int64, 
 		len(means) > 0 && len(standardDeviations) > 0 {
 		// using global means and standard deviations, if given
 		log.Lvl1("Standardising the testing set with global means and standard deviations...")
-		XTest = libdrynxencoding.StandardiseWith(XTest, means, standardDeviations)
+		libdrynxencoding.StandardiseWith(XTest, means, standardDeviations)
 	} else {
 		// using local means and standard deviations, if not given
 		log.Lvl1("Standardising the testing set with local means and standard deviations...")
-		var err error
-		XTest, err = libdrynxencoding.Standardise(XTest)
-		if err != nil {
-			return 0, 0, 0, 0, 0, err
-		}
+		libdrynxencoding.Standardise(XTest)
 	}
 
-	predictions := make([]int64, len(XTest))
-	predictionsFloat := make([]float64, len(XTest))
-	for i := range XTest {
-		predictionsFloat[i] = libdrynxencoding.PredictInClear(XTest[i], weights)
+	rowCount, _ := XTest.Dims()
+	predictions := make([]int64, rowCount)
+	predictionsFloat := make([]float64, rowCount)
+	for i := range predictions {
+		predictionsFloat[i] = libdrynxencoding.PredictInClear(XTest.RowView(i), weights)
 		predictions[i] = int64(math.Round(predictionsFloat[i]))
-		fmt.Printf("%12.8e %1d %2d\n", predictionsFloat[i], predictions[i], yTest[i])
+		fmt.Printf("%12.8e %1d %2e\n", predictionsFloat[i], predictions[i], yTest.AtVec(i))
 	}
 
-	accuracy := libdrynxencoding.Accuracy(predictions, yTest)
-	precision := libdrynxencoding.Precision(predictions, yTest)
-	recall := libdrynxencoding.Recall(predictions, yTest)
-	fscore := libdrynxencoding.Fscore(predictions, yTest)
-	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, yTest)
+	results := make([]int64, rowCount)
+	for i := range results {
+		results[i] = int64(yTest.AtVec(i))
+	}
+
+	accuracy := libdrynxencoding.Accuracy(predictions, results)
+	precision := libdrynxencoding.Precision(predictions, results)
+	recall := libdrynxencoding.Recall(predictions, results)
+	fscore := libdrynxencoding.Fscore(predictions, results)
+	auc := libdrynxencoding.AreaUnderCurve(predictionsFloat, results)
 
 	fmt.Println("accuracy: ", accuracy)
 	fmt.Println("precision:", precision)
@@ -1142,21 +1145,17 @@ func TestServiceDrynxLogisticRegressionV2(t *testing.T) {
 	XTest, yTest, err := libdrynxencoding.LoadData(dataset, filePathTesting)
 	require.NoError(t, err)
 
-	var means = make([]float64, 0)
-	var standardDeviations = make([]float64, 0)
+	var means []float64
+	var standardDeviations []float64
 	if standardisationMode == 0 || standardisationMode == 1 {
-		means, err = libdrynxencoding.ComputeMeans(XTrain)
-		require.NoError(t, err)
-		standardDeviations, err = libdrynxencoding.ComputeStandardDeviations(XTrain)
-		require.NoError(t, err)
-	} else {
-		means = nil
-		standardDeviations = nil
+		means = libdrynxencoding.ComputeMeans(XTrain)
+		standardDeviations = libdrynxencoding.ComputeStandardDeviations(XTrain)
 	}
 
+	rowCount, columnCount := XTrain.Dims()
 	lrParameters.FilePath = filePathTraining
-	lrParameters.NbrRecords = int64(len(XTrain))
-	lrParameters.NbrFeatures = int64(len(XTrain[0]))
+	lrParameters.NbrRecords = int64(rowCount)
+	lrParameters.NbrFeatures = int64(columnCount)
 	lrParameters.Means = means
 	lrParameters.StandardDeviations = standardDeviations
 
@@ -1528,21 +1527,17 @@ func TestServiceDrynxLogisticRegressionBC(t *testing.T) {
 	XTest, yTest, err := libdrynxencoding.LoadData(dataset, filePathTesting)
 	require.NoError(t, err)
 
-	var means = make([]float64, 0)
-	var standardDeviations = make([]float64, 0)
+	var means []float64
+	var standardDeviations []float64
 	if standardisationMode == 0 || standardisationMode == 1 {
-		means, err = libdrynxencoding.ComputeMeans(XTrain)
-		require.NoError(t, err)
-		standardDeviations, err = libdrynxencoding.ComputeStandardDeviations(XTrain)
-		require.NoError(t, err)
-	} else {
-		means = nil
-		standardDeviations = nil
+		means = libdrynxencoding.ComputeMeans(XTrain)
+		standardDeviations = libdrynxencoding.ComputeStandardDeviations(XTrain)
 	}
 
+	rowCount, columnCount := XTrain.Dims()
 	lrParameters.FilePath = filePathTraining
-	lrParameters.NbrRecords = int64(len(XTrain))
-	lrParameters.NbrFeatures = int64(len(XTrain[0]))
+	lrParameters.NbrRecords = int64(rowCount)
+	lrParameters.NbrFeatures = int64(columnCount)
 	lrParameters.Means = means
 	lrParameters.StandardDeviations = standardDeviations
 
@@ -1936,18 +1931,14 @@ func TestServiceDrynxLogisticRegressionGSE(t *testing.T) {
 	var means = make([]float64, 0)
 	var standardDeviations = make([]float64, 0)
 	if standardisationMode == 0 || standardisationMode == 1 {
-		means, err = libdrynxencoding.ComputeMeans(XTrain)
-		require.NoError(t, err)
-		standardDeviations, err = libdrynxencoding.ComputeStandardDeviations(XTrain)
-		require.NoError(t, err)
-	} else {
-		means = nil
-		standardDeviations = nil
+		means = libdrynxencoding.ComputeMeans(XTrain)
+		standardDeviations = libdrynxencoding.ComputeStandardDeviations(XTrain)
 	}
 
+	rowCount, columnCount := XTrain.Dims()
 	lrParameters.FilePath = filePathTraining
-	lrParameters.NbrRecords = int64(len(XTrain))
-	lrParameters.NbrFeatures = int64(len(XTrain[0]))
+	lrParameters.NbrRecords = int64(rowCount)
+	lrParameters.NbrFeatures = int64(columnCount)
 	lrParameters.Means = means
 	lrParameters.StandardDeviations = standardDeviations
 
